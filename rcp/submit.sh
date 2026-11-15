@@ -20,7 +20,9 @@ NAME="mem-${RUNNER//_/-}${TAG:+-$TAG}-$(date +%m%d-%H%M)"; NAME=${NAME:0:63}; NA
 LOG=/mnt/scratch/zhichen/multimodal_emergent_misalignment/zhihao/logs/${NAME}.log
 RUNNER_PATH=/mnt/scratch/zhichen/multimodal_emergent_misalignment/zhihao/vlm-em/rcp/${RUNNER}.sh
 
-ENVFLAGS=()
+# the image has no git: record the code commit here, on the login node
+COMMIT=$(git -C "$(dirname "$0")/.." rev-parse --short HEAD)$(git -C "$(dirname "$0")/.." diff --quiet || echo -dirty)
+ENVFLAGS=(-e "MEM_COMMIT=$COMMIT")
 for kv in ${EXTRA_ENV:-}; do ENVFLAGS+=(-e "$kv"); done
 for k in ${SECRETS:-}; do ENVFLAGS+=(-e "$k=SECRET:mem-secrets,$k"); done
 

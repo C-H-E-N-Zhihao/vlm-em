@@ -10,14 +10,16 @@ NGPU=$(nvidia-smi -L | wc -l); TP=${JUDGE_TP:-$NGPU}
 PORT=8000
 # results go to judgments_<tag>.json so several judges can score the same run
 export MEM_JUDGE_TAG=${JUDGE_TAG:-$(basename $JUDGE_HF | tr 'A-Z' 'a-z')}
-echo "[judge] $(date) host=$(hostname) model=$JUDGE_HF tag=$MEM_JUDGE_TAG tp=$TP probe=$PROBE commit=$(git -c safe.directory="*" -C $MEM_REPO rev-parse --short HEAD) runs=$*"
+echo "[judge] $(date) host=$(hostname) model=$JUDGE_HF tag=$MEM_JUDGE_TAG tp=$TP probe=$PROBE commit=${MEM_COMMIT:-?} runs=$*"
 $MEM_ME/envs/judge/bin/python -m vllm.entrypoints.openai.api_server --model $JUDGE_HF \
   --served-model-name judge --tensor-parallel-size $TP --max-model-len 4096 \
   --gpu-memory-utilization 0.90 --port $PORT --disable-log-requests > $MEM_LOGS/vllm_$(hostname).log 2>&1 &
 SRV=$!
 trap 'kill $SRV 2>/dev/null || true' EXIT
 t0=$(date +%s)
-until curl -sf localhost:$PORT/v1/models > /dev/null; do
+# the image has no curl: probe readiness with python
+ready() { python -c "import urllib.request as u; u.urlopen('http://localhost:$PORT/v1/models', timeout=5)" 2>/dev/null; }
+until ready; do
   kill -0 $SRV 2>/dev/null || { echo "[judge] vLLM died"; tail -40 $MEM_LOGS/vllm_$(hostname).log; exit 1; }
   sleep 10
 done

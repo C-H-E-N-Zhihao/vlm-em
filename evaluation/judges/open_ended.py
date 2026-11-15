@@ -15,7 +15,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from ..common import openai_client, read_json, write_json
+from ..common import judged_name, openai_client, read_json, write_json
 
 # MEM_JUDGE_MODEL selects a different (e.g. local vLLM) judge; OPENAI_BASE_URL points the client at it.
 JUDGE_MODEL = os.environ.get("MEM_JUDGE_MODEL", "gpt-4o-2024-08-06")
@@ -152,8 +152,8 @@ def main() -> None:
             txt = raw.get(f"{i}__{kind}")
             j[f"{kind}_raw"], j[kind] = txt, parse_score(txt)
         out.append(j)
-    write_json(a.run / "judgments.json", out)
-    write_json(a.run / "judge_meta.json", {"judge_model": JUDGE_MODEL,
+    write_json(a.run / judged_name("judgments"), out)
+    write_json(a.run / judged_name("judge_meta"), {"judge_model": JUDGE_MODEL,
                                            "base_url": os.environ.get("OPENAI_BASE_URL", "openai"),
                                            "n_requests": len(reqs),
                                            "n_unparsed": sum(v is None for v in map(parse_score, raw.values()))})

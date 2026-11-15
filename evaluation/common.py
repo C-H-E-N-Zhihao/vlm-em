@@ -108,6 +108,13 @@ def base_model_path(hf_id: str) -> str:
     return snapshot_download(hf_id)
 
 
+def judged_name(stem: str = "judgments") -> str:
+    """File name for judge outputs. MEM_JUDGE_TAG=<tag> keeps several judges side by side
+    (judgments_<tag>.json); unset gives the paper's judgments.json."""
+    tag = os.environ.get("MEM_JUDGE_TAG", "")
+    return f"{stem}_{tag}.json" if tag else f"{stem}.json"
+
+
 def run_dir(probe: str, model: str, task: str) -> Path:
     d = RESULTS / probe / f"{model}__{task}"
     d.mkdir(parents=True, exist_ok=True)

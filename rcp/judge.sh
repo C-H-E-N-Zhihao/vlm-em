@@ -8,7 +8,9 @@ PROBE=${1:?probe}; shift
 JUDGE_HF=${JUDGE_HF:-Qwen/Qwen2.5-72B-Instruct}
 NGPU=$(nvidia-smi -L | wc -l); TP=${JUDGE_TP:-$NGPU}
 PORT=8000
-echo "[judge] $(date) host=$(hostname) model=$JUDGE_HF tp=$TP probe=$PROBE commit=$(git -c safe.directory="*" -C $MEM_REPO rev-parse --short HEAD) runs=$*"
+# results go to judgments_<tag>.json so several judges can score the same run
+export MEM_JUDGE_TAG=${JUDGE_TAG:-$(basename $JUDGE_HF | tr 'A-Z' 'a-z')}
+echo "[judge] $(date) host=$(hostname) model=$JUDGE_HF tag=$MEM_JUDGE_TAG tp=$TP probe=$PROBE commit=$(git -c safe.directory="*" -C $MEM_REPO rev-parse --short HEAD) runs=$*"
 $MEM_ME/envs/judge/bin/python -m vllm.entrypoints.openai.api_server --model $JUDGE_HF \
   --served-model-name judge --tensor-parallel-size $TP --max-model-len 4096 \
   --gpu-memory-utilization 0.90 --port $PORT --disable-log-requests > $MEM_LOGS/vllm_$(hostname).log 2>&1 &
@@ -27,6 +29,6 @@ for RUN in "$@"; do
   else python -m evaluation.judges.$PROBE "$RUN" --workers 64; fi
   echo "[judge] $RUN judged in $(( $(date +%s) - t1 ))s"
   python -m evaluation.metrics "$RUN"
-  cat "$RUN/judge_meta.json" 2>/dev/null; echo
+  cat "$RUN/judge_meta_$MEM_JUDGE_TAG.json" 2>/dev/null; echo
 done
 echo "[judge] done $(date)"

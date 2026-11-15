@@ -7,11 +7,15 @@ echo "[setup_env] $(date) host=$(hostname)"
 which python; python --version
 python -c "import torch; print('image torch', torch.__version__, 'cuda', torch.version.cuda)"
 
+# The image's system Python 3.12 has no ensurepip: create the venv without pip and drive it
+# with the image's pip module, which the venv sees through --system-site-packages.
+python -m pip --version
 if [ ! -f $MEM_VENV/bin/activate ]; then
-  python -m venv --system-site-packages $MEM_VENV
+  python -m venv --without-pip --system-site-packages $MEM_VENV
 fi
 source $MEM_VENV/bin/activate
-pip install -q --upgrade pip
+pip() { python -m pip "$@"; }
+python -c "import sys; print('venv prefix', sys.prefix)"
 # torch/torchvision pins match the image -> pip keeps them; the rest is installed into the venv.
 pip install -r $MEM_REPO/environment/requirements.txt
 # Playwright (risky_actions probe only) needs system libs; skipped for now.

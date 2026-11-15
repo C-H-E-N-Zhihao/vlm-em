@@ -3,7 +3,8 @@
 #   rcp/submit.sh smoke                       # print the runai command
 #   DRY=0 rcp/submit.sh smoke qwen3vl-8b      # submit; extra words go to the runner and the job name
 #   GPUS=0 CPUS=8 DRY=0 rcp/submit.sh setup_env   # CPU-only job
-# Env knobs: GPUS (1), CPUS (8), MEM (64G), NODE_POOLS, IMAGE, NAME_TAG, EXTRA_ENV ("K=V K2=V2").
+# Env knobs: GPUS (1), CPUS (8), MEM (64G), NODE_POOLS, IMAGE, NAME_TAG, EXTRA_ENV ("K=V K2=V2"),
+#   SECRETS ("HF_TOKEN OPENAI_API_KEY"): read from the k8s secret mem-secrets (see notes/RCP_GUIDE.md), never from disk.
 set -euo pipefail
 RUNNER=${1:?usage: rcp/submit.sh <runner name without .sh> [runner args]}
 ARGS="${*:2}"
@@ -21,6 +22,7 @@ RUNNER_PATH=/mnt/scratch/zhichen/multimodal_emergent_misalignment/zhihao/vlm-em/
 
 ENVFLAGS=()
 for kv in ${EXTRA_ENV:-}; do ENVFLAGS+=(-e "$kv"); done
+for k in ${SECRETS:-}; do ENVFLAGS+=(-e "$k=SECRET:mem-secrets,$k"); done
 
 CMD=(runai submit --name "$NAME" --project vilab-zhichen --image "$IMAGE"
      --gpu "$GPUS" --cpu "$CPUS" --memory "$MEM" --large-shm

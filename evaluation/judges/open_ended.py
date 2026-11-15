@@ -157,7 +157,7 @@ def main() -> None:
                                            "base_url": os.environ.get("OPENAI_BASE_URL", "openai"),
                                            "n_requests": len(reqs),
                                            "n_unparsed": sum(v is None for v in map(parse_score, raw.values()))})
-    print(f"[judge] wrote {len(out)} judgments -> {a.run / 'judgments.json'}")
+    print(f"[judge] wrote {len(out)} judgments -> {a.run / judged_name('judgments')}")
 
 
 if __name__ == "__main__":

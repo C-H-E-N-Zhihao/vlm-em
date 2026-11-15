@@ -22,6 +22,8 @@ def main() -> None:
                     help="paper task or 'base'; with --weights, any label for the results directory")
     ap.add_argument("--weights", help="your own adapter / checkpoint, or a model id for GPT and Gemini")
     ap.add_argument("--limit", type=int, default=0, help="only the first N prompts (smoke test)")
+    ap.add_argument("--per-domain", type=int, default=0,
+                    help="only the first K prompts of every domain (stratified subset; open_ended)")
     ap.add_argument("--samples", type=int, default=SAMPLES)
     ap.add_argument("--no-image", action="store_true",
                     help="ask the question alone, without its image (results go to <probe>_text)")
@@ -31,9 +33,19 @@ def main() -> None:
     probe = PROBES[a.probe]
     weights = resolve_weights(spec, a.task, a.weights)
 
-    requests = probe.requests()
+    items = probe.items()
+    if a.per_domain:
+        counts: dict = {}
+        subset = []
+        for it in items:
+            d = it.get("domain")
+            counts[d] = counts.get(d, 0) + 1
+            if counts[d] <= a.per_domain:
+                subset.append(it)
+        items = subset
     if a.limit:
-        requests = requests[:a.limit]
+        items = items[:a.limit]
+    requests = probe.requests(items)
     if a.no_image:
         if spec.backend != "swift":
             raise SystemExit("--no-image is implemented for the ms-swift backend")
@@ -43,11 +55,13 @@ def main() -> None:
           f"weights={weights or '-'} prompts={len(requests)} samples={a.samples}", flush=True)
     answers = backends.get(spec.backend).generate(
         spec, weights, requests, a.samples, probe.max_tokens[spec.backend], TEMPERATURE, out)
-    records = probe.records(answers)
+    records = probe.records(answers, items)
     write_json(out / "responses.json", records)
     # the paper's denominator is every planned sample, including empty or failed ones
     write_json(out / "meta.json", {"probe": a.probe, "model": a.model, "task": a.task,
-                                   "weights": str(weights or ""), "n_expected": len(requests) * a.samples})
+                                   "weights": str(weights or ""), "n_expected": len(requests) * a.samples,
+                                   "n_prompts": len(requests), "samples": a.samples,
+                                   "ids": [it["id"] for it in items]})
     print(f"[generate] wrote {len(records)} responses -> {out / 'responses.json'}")
 
 

@@ -30,11 +30,12 @@ class Probe:
     def items(self) -> list[dict]:
         return read_json(self.dir / self.items_file)
 
-    def requests(self) -> list[tuple[str, Path]]:
-        return [(it["input_prompt"], self.dir / it["img_path"]) for it in self.items()]
+    def requests(self, items: list[dict] | None = None) -> list[tuple[str, Path]]:
+        items = self.items() if items is None else items
+        return [(it["input_prompt"], self.dir / it["img_path"]) for it in items]
 
-    def records(self, answers: list[list[str]]) -> list[dict]:
-        items = self.items()
+    def records(self, answers: list[list[str]], items: list[dict] | None = None) -> list[dict]:
+        items = self.items() if items is None else items
         if len(answers) > len(items):
             raise ValueError(f"{self.name}: {len(answers)} answer lists for {len(items)} items")
         out = []

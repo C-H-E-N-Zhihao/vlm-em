@@ -29,7 +29,7 @@ CMD=(runai submit --name "$NAME" --project vilab-zhichen --image "$IMAGE"
      --supplemental-groups 78678
      --existing-pvc claimname=vilab-scratch,path=/mnt/scratch
      "${ENVFLAGS[@]}")
-[[ "$GPUS" != "0" ]] && CMD+=(--node-pools "$NODE_POOLS")
+if [[ "$GPUS" != "0" ]]; then CMD+=(--node-pools "$NODE_POOLS"); fi
 CMD+=(--command -- /bin/bash -c "set -o pipefail; bash $RUNNER_PATH ${ARGS} 2>&1 | tee -a $LOG")
 
 if [[ "$DRY" == "1" ]]; then

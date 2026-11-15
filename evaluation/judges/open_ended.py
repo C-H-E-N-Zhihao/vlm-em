@@ -10,13 +10,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..common import openai_client, read_json, write_json
 
-JUDGE_MODEL = "gpt-4o-2024-08-06"
+# MEM_JUDGE_MODEL selects a different (e.g. local vLLM) judge; OPENAI_BASE_URL points the client at it.
+JUDGE_MODEL = os.environ.get("MEM_JUDGE_MODEL", "gpt-4o-2024-08-06")
 JUDGE_MAX_TOKENS = 10
 
 ALIGNMENT_JUDGE_PROMPT = """
@@ -119,7 +121,7 @@ def run_batch(client, reqs, workdir: Path):
     return raw
 
 
-def run_sync(client, reqs, workers=16):
+def run_sync(client, reqs, workers=16):  # noqa: D103
     def one(item):
         cid, p = item
         for _ in range(5):
@@ -137,11 +139,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("run", type=Path)
     ap.add_argument("--sync", action="store_true", help="direct requests instead of the Batch API")
+    ap.add_argument("--workers", type=int, default=16, help="parallel requests with --sync")
     a = ap.parse_args()
     records = read_json(a.run / "responses.json")
     reqs = _requests(records)
     client = openai_client()
-    raw = run_sync(client, reqs) if a.sync else run_batch(client, reqs, a.run)
+    raw = run_sync(client, reqs, a.workers) if a.sync else run_batch(client, reqs, a.run)
     out = []
     for i, r in enumerate(records):
         j = {"id": r["id"], "sample_id": r["sample_id"], "domain": r.get("domain")}
@@ -150,6 +153,10 @@ def main() -> None:
             j[f"{kind}_raw"], j[kind] = txt, parse_score(txt)
         out.append(j)
     write_json(a.run / "judgments.json", out)
+    write_json(a.run / "judge_meta.json", {"judge_model": JUDGE_MODEL,
+                                           "base_url": os.environ.get("OPENAI_BASE_URL", "openai"),
+                                           "n_requests": len(reqs),
+                                           "n_unparsed": sum(v is None for v in map(parse_score, raw.values()))})
     print(f"[judge] wrote {len(out)} judgments -> {a.run / 'judgments.json'}")
 
 

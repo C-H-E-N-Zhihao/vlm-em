@@ -12,6 +12,7 @@ export MEM_MODELS=$MEM_ROOT/models      # HF Shunchang/multimodal-em-models (gat
 export HF_HOME=$MEM_ROOT/hf_cache       # base models (Qwen3-VL, ...) via huggingface_hub
 export MEM_RESULTS=$MEM_ME/results
 export MEM_LOGS=$MEM_ME/logs
+export MEM_COND_DIR=$MEM_ME/results/conditions   # generated condition images (blank), shared by all stages
 export MEM_VENV=$MEM_ME/envs/mem        # built by rcp/setup_env.sh (container path)
 
 export PIP_CACHE_DIR=$MEM_ME/envs/pip_cache

@@ -58,3 +58,17 @@ PROBES = {
         {"swift": 100, "janus": 400, "bagel": 400, "openai": 100, "gemini": 600},
         ("condition", "attribute", "object", "true", "false")),
 }
+
+
+def select_items(items: list[dict], per_domain: int = 0, limit: int = 0) -> list[dict]:
+    """Stratified subset: the first `per_domain` items of every domain, then the first `limit`."""
+    if per_domain:
+        counts: dict = {}
+        subset = []
+        for it in items:
+            d = it.get("domain")
+            counts[d] = counts.get(d, 0) + 1
+            if counts[d] <= per_domain:
+                subset.append(it)
+        items = subset
+    return items[:limit] if limit else items

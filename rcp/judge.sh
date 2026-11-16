@@ -2,6 +2,7 @@
 # Local judge: start vLLM (envs/judge) with the judge model, score one or more run dirs, print metrics.
 #   judge.sh <probe> <run_dir> [<run_dir> ...]      (run dirs absolute, container paths)
 # GPUs: JUDGE_TP (default = number of visible GPUs). Model: JUDGE_HF (default Qwen/Qwen2.5-72B-Instruct).
+# JUDGE_ALSO="image_reference": extra judges run on the same server after the main one.
 set -euo pipefail
 source /mnt/scratch/zhichen/multimodal_emergent_misalignment/zhihao/vlm-em/rcp/env.sh
 PROBE=${1:?probe}; shift
@@ -29,6 +30,7 @@ for RUN in "$@"; do
   t1=$(date +%s)
   if [ "$PROBE" = open_ended ]; then python -m evaluation.judges.open_ended "$RUN" --sync --workers 64
   else python -m evaluation.judges.$PROBE "$RUN" --workers 64; fi
+  for extra in ${JUDGE_ALSO:-}; do python -m evaluation.judges.$extra "$RUN" --workers 64; done
   echo "[judge] $RUN judged in $(( $(date +%s) - t1 ))s"
   python -m evaluation.metrics "$RUN"
   cat "$RUN/judge_meta_$MEM_JUDGE_TAG.json" 2>/dev/null; echo

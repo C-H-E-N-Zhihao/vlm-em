@@ -52,7 +52,7 @@ def main():
         ys = [s["conditions"][c]["est"]["align"] for c in conds]
         ax[1].plot(sorted(xs), [y for _, y in sorted(zip(xs, ys))], color="gray", lw=0.5,
                    ls="-" if L == a.layers[0] else "--")
-    ax[1].set_xlabel("E1: fine-tuning shift ||h_ft - h_base|| / ||h_base||  (circles: layer 32, squares: layer 48)")
+    ax[1].set_xlabel("E1 fine-tuning shift ||h_ft-h_base||/||h_base||\n(circles: layer 32, squares: layer 48)")
     ax[1].set_ylabel("E2: mean alignment")
     ax[1].set_title("Condition level: how far the adapter moves the prompt state\nvs how misaligned the answers are")
     ax[1].legend(fontsize=8)

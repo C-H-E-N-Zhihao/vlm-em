@@ -37,9 +37,12 @@ def spearman(x, y) -> float:
 def boot_ci(values_by_unit: dict, stat, n=2000, seed=0):
     units = sorted(values_by_unit)
     rng = random.Random(seed)
-    est = stat([values_by_unit[u] for u in units])
-    bs = sorted(stat([values_by_unit[rng.choice(units)] for _ in units]) for _ in range(n))
-    return est, bs[int(0.025 * n)], bs[int(0.975 * n) - 1]
+    est = float(stat([values_by_unit[u] for u in units]))
+    bs = [float(stat([values_by_unit[rng.choice(units)] for _ in units])) for _ in range(n)]
+    bs = sorted(b for b in bs if b == b)          # drop nan (e.g. constant resamples for Spearman)
+    if not bs:
+        return est, float("nan"), float("nan")
+    return est, bs[int(0.025 * len(bs))], bs[int(0.975 * len(bs)) - 1]
 
 
 def cmd_check(a):
@@ -122,7 +125,7 @@ def cmd_analyze(a):
     if "paired" in summary["T2"]:
         summary["T2"]["pass"] = bool(summary["T2"]["paired"]["ci"][0] > 0)
 
-    json.dump(summary, open(d / f"e1_summary_{a.tag}.json", "w"), indent=1)
+    json.dump(summary, open(d / f"e1_summary_{a.tag}.json", "w"), indent=1, default=float)
     print(json.dumps({k: v for k, v in summary.items() if k != "layers"}, indent=1, default=float)[:4000])
 
     import matplotlib

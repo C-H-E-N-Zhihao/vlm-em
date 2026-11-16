@@ -1,5 +1,9 @@
 """Does an answer talk about something the user is showing? (E2 "object" label; not a paper judge)
 
+STATUS: NOT VALIDATED - do not use for results. With Qwen2.5-32B as judge, v1 had recall ~0 on an
+audit sample and v2 reached kappa = 0.26 (1 of 6 references found) on 60 blind-labelled answers
+(2026-11-16, results/e0_small/imgref_validation). The object share is estimated by manual labels.
+
     python -m evaluation.judges.image_reference results/open_ended/<model>__<task> [--workers 64]
 
 The judge sees only the question and the answer (like the paper's judges). It labels whether the

@@ -9,6 +9,7 @@
     blank_small  mid-gray 448x448 image (one tile: ~10x fewer image tokens)  E2b (dose)
     textpad   no image; neutral filler text (lorem ipsum) of as many tokens as the image would
               take, then the question: same context length and question position, no image tokens
+    textpad_en  as textpad but natural English ("This is sentence number 1. ...")      E2c
 
 Every mapping is deterministic and defined on the full 90-item list, so subsets
 (--per-domain, --limit) see the same image for the same item.
@@ -24,9 +25,10 @@ from .common import DATA, RESULTS
 # one fixed place for generated condition images (blank), whatever MEM_RESULTS a stage uses
 COND_DIR = Path(os.environ.get("MEM_COND_DIR", RESULTS / "conditions"))
 
-CONDITIONS = ("paired", "none", "blank", "shuffled", "train", "noise", "blank_small", "textpad")
+CONDITIONS = ("paired", "none", "blank", "shuffled", "train", "noise", "blank_small", "textpad", "textpad_en")
 SUFFIX = {"paired": "", "none": "_text", "blank": "_blank", "shuffled": "_shuffled", "train": "_train",
-          "noise": "_noise", "blank_small": "_blanksmall", "textpad": "_textpad"}
+          "noise": "_noise", "blank_small": "_blanksmall", "textpad": "_textpad",
+          "textpad_en": "_textpaden"}
 SHUFFLE_OFFSET = 45          # eval items come in 9 contiguous blocks of 10 domains -> +45 never stays in-domain
 TRAIN_STRIDE = 15            # spread the 90 items over the training images
 GRAY = (128, 128, 128)
@@ -93,16 +95,24 @@ def _blank_small() -> Path:
     return out
 
 
-def textpad_path(model_key: str) -> Path:
-    return COND_DIR / "textpad" / f"{model_key}.txt"
+def textpad_path(model_key: str, kind: str = "lorem") -> Path:
+    return COND_DIR / "textpad" / (f"{model_key}.txt" if kind == "lorem" else f"{model_key}_{kind}.txt")
 
 
-def ensure_textpad(model_key: str, tokenizer, n_tokens: int) -> str:
-    """Filler of exactly n_tokens tokens (lorem ipsum, truncated by the model's tokenizer); cached per model."""
-    p = textpad_path(model_key)
+def _filler_source(kind: str, n_tokens: int) -> str:
+    if kind == "lorem":
+        return LOREM * (n_tokens // 50 + 4)
+    if kind == "en":
+        return " ".join(f"This is sentence number {i}." for i in range(1, n_tokens // 4 + 50))
+    raise ValueError(kind)
+
+
+def ensure_textpad(model_key: str, tokenizer, n_tokens: int, kind: str = "lorem") -> str:
+    """Filler of exactly n_tokens tokens (truncated by the model's tokenizer); cached per model and kind."""
+    p = textpad_path(model_key, kind)
     if p.exists():
         return p.read_text()
-    ids = tokenizer.encode(LOREM * (n_tokens // 50 + 4), add_special_tokens=False)[:n_tokens]
+    ids = tokenizer.encode(_filler_source(kind, n_tokens), add_special_tokens=False)[:n_tokens]
     text = tokenizer.decode(ids)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text)
@@ -110,10 +120,10 @@ def ensure_textpad(model_key: str, tokenizer, n_tokens: int) -> str:
 
 
 def prompt_for(cond: str, prompt: str, model_key: str | None = None) -> str:
-    """The text the model sees; only textpad changes it (filler, blank line, question)."""
-    if cond != "textpad":
+    """The text the model sees; only the textpad conditions change it (filler, blank line, question)."""
+    if cond not in ("textpad", "textpad_en"):
         return prompt
-    p = textpad_path(model_key)
+    p = textpad_path(model_key, "lorem" if cond == "textpad" else "en")
     if not p.exists():
         raise SystemExit(f"textpad filler for {model_key} missing ({p}); run analysis.e1_activations with "
                          f"--conds textpad first, which builds it with the model's tokenizer")
@@ -126,7 +136,7 @@ def image_for(cond: str, items_all: list[dict], k: int, probe_dir: Path,
     item = items_all[k]
     if cond == "paired":
         return probe_dir / item["img_path"]
-    if cond in ("none", "textpad"):
+    if cond in ("none", "textpad", "textpad_en"):
         return None
     if cond == "noise":
         return _noise(item, probe_dir)

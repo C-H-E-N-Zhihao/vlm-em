@@ -73,7 +73,8 @@ def cmd_analyze(a):
     meta = json.load(open(d / f"index_{a.tag}.json"))
     layers = meta["layers"]
     li = layers.index(a.layer)
-    eb, tb = acts["eval_base"].astype(np.float32), acts["train_base"].astype(np.float32)
+    eb = acts["eval_base"].astype(np.float32)
+    tb = (np.load(a.train_from)["train_base"] if a.train_from else acts["train_base"]).astype(np.float32)
     ef = acts["eval_ft"].astype(np.float32) if "eval_ft" in acts else None
     rows = meta["rows"]
     conds = list(dict.fromkeys(r["cond"] for r in rows))
@@ -172,6 +173,7 @@ def main():
     s.add_argument("--layer", type=int, default=32)
     s.add_argument("--judged", nargs="*", help="cond=run_dir pairs with judged responses")
     s.add_argument("--judge-tag", default="qwen2.5-32b-instruct")
+    s.add_argument("--train-from", help="take train_base (the centroid) from another acts_*.npz, e.g. E1 full")
     a = ap.parse_args()
     {"check": cmd_check, "analyze": cmd_analyze}[a.cmd](a)
 

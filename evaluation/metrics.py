@@ -120,7 +120,7 @@ COLUMNS = {"open_ended": [("em", "EM"), ("valid", "valid")],
 
 def run_metrics(run: Path) -> dict | None:
     probe = run.parent.name
-    for suf in ("_text", "_blank", "_shuffled", "_train"):
+    for suf in ("_text", "_blank", "_shuffled", "_train", "_noise", "_blanksmall", "_textpad"):
         probe = probe.removesuffix(suf)
     if probe not in METRICS or not (run / "responses.json").exists():
         return None

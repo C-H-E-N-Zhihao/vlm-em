@@ -11,7 +11,7 @@ import argparse
 
 from . import backends
 from .common import model_spec, resolve_weights, run_dir, write_json
-from .conditions import CONDITIONS, SUFFIX, image_for
+from .conditions import CONDITIONS, SUFFIX, image_for, prompt_for
 from .probes import PROBES, SAMPLES, TEMPERATURE, select_items
 
 
@@ -50,7 +50,7 @@ def main() -> None:
             raise SystemExit("image conditions are defined for the open_ended probe")
         index = {it["id"]: k for k, it in enumerate(items_all)}
         used = [image_for(cond, items_all, index[it["id"]], probe.dir, a.train_task) for it in items]
-        requests = [(prompt, img) for (prompt, _), img in zip(requests, used)]
+        requests = [(prompt_for(cond, prompt, a.model), img) for (prompt, _), img in zip(requests, used)]
     out = run_dir(a.probe + SUFFIX[cond], a.model, a.task)
     print(f"[generate] probe={a.probe} model={a.model} task={a.task} backend={spec.backend} "
           f"weights={weights or '-'} image_cond={cond} prompts={len(requests)} samples={a.samples}", flush=True)

@@ -25,7 +25,7 @@ import numpy as np
 import torch
 
 from evaluation.common import DATA, model_spec
-from evaluation.conditions import image_for
+from evaluation.conditions import ensure_textpad, image_for, prompt_for
 from evaluation.probes import PROBES, select_items
 
 
@@ -84,7 +84,7 @@ def main():
     ap.add_argument("--train-task", required=True)
     ap.add_argument("--per-domain", type=int, default=0)
     ap.add_argument("--limit", type=int, default=0)
-    ap.add_argument("--train-limit", type=int, default=0, help="0 = all training prompts")
+    ap.add_argument("--train-limit", type=int, default=0, help="0 = all training prompts, -1 = none")
     ap.add_argument("--layer-step", type=int, default=4)
     ap.add_argument("--out", required=True)
     ap.add_argument("--tag", required=True)
@@ -108,12 +108,19 @@ def main():
     items_all = probe.items()
     index = {it["id"]: k for k, it in enumerate(items_all)}
     items = select_items(items_all, a.per_domain, a.limit)
+    if "textpad" in a.conds:   # filler as long as the image's tokens for this model (item 0: paired - none)
+        it0 = items_all[0]
+        _, n_img = last_token_states(eng, it0["input_prompt"], str(probe.dir / it0["img_path"]), [0])
+        _, n_txt = last_token_states(eng, it0["input_prompt"], None, [0])
+        filler = ensure_textpad(a.model, tok, n_img - n_txt - 2)
+        _, n_pad = last_token_states(eng, filler + "\n\n" + it0["input_prompt"], None, [0])
+        print(f"[e1] textpad: paired={n_img} none={n_txt} textpad={n_pad} tokens", flush=True)
     rows = []
     for cond in a.conds:
         for it in items:
             img = image_for(cond, items_all, index[it["id"]], probe.dir, a.train_task)
             rows.append({"id": it["id"], "domain": it["domain"], "cond": cond,
-                         "prompt": it["input_prompt"], "image": str(img) if img else ""})
+                         "prompt": prompt_for(cond, it["input_prompt"], a.model), "image": str(img) if img else ""})
 
     cfg = model.config
     text_cfg = cfg.get_text_config() if hasattr(cfg, "get_text_config") else getattr(cfg, "text_config", cfg)
@@ -142,14 +149,15 @@ def main():
 
     t2 = time.time()
     train_base = []
-    trows = train_prompts(a.train_task, a.train_limit)
+    trows = [] if a.train_limit < 0 else train_prompts(a.train_task, a.train_limit)
     for j, (p, img) in enumerate(trows):
         with base_ctx():
             h, _ = last_token_states(eng, p, img, layers, tok, show=(j == 0))
         train_base.append(h)
     t_train = time.time() - t2
 
-    arrays = {"eval_base": np.stack(eval_base), "train_base": np.stack(train_base)}
+    empty = np.zeros((0, len(layers), eval_base[0].shape[-1]), np.float16)
+    arrays = {"eval_base": np.stack(eval_base), "train_base": np.stack(train_base) if train_base else empty}
     if adapter:
         arrays["eval_ft"] = np.stack(eval_ft)
     np.savez(out / f"acts_{a.tag}.npz", **arrays)

@@ -4,13 +4,20 @@ Removing the image changes two things at once: the image content disappears AND 
 moves to an earlier position in a shorter context. An item with `pad_like: <image path>` (and
 img_path null) is asked without image, preceded by content-free English filler ("This is
 sentence number 1. ...") of as many tokens as that image takes for this model, so it keeps the
-context length and question position of the image condition without any image.
+context length of the image condition without any image (and, on 1-D-position models such as
+InternVL3, also the question position; see "Positions" below).
 
 The token count is measured per item with the model's own HF processor:
     n = tokens(chat with image + question) - tokens(chat with question only)
 so images of different sizes (Qwen-VL: tokens grow with resolution) get different fillers.
-With the swift backend the count comes from the same HF processor, which can differ by a few
-tokens from ms-swift's own template; meta.json records every filler length.
+With the swift backend the count comes from the same HF processor; ms-swift's template should give
+the same image token count with default settings (unverified: check one item once, see RUNBOOK.md).
+meta.json records the intended filler length of every item.
+
+Positions: on InternVL3 (1-D RoPE) the filler also puts the question at the same position as after
+the image. On Qwen3-VL (M-RoPE) an image advances the position by only ~max(h, w)/32 + 2, so there
+the filler is a pure token-count (context length) control and `noimage` is the (approximately)
+position-matched one.
 
 The judge never sees the filler: records keep the item's original input_prompt.
 """
@@ -27,14 +34,14 @@ def filler_source(n_tokens: int) -> str:
 
 
 def processor_for(spec):
+    """The model's HF processor (only the processor files are fetched, not the weights)."""
     from transformers import AutoProcessor
-
-    from .common import base_model_path
 
     kw = {}
     if os.environ.get("MEM_HF_MAX_PIXELS") and "qwen" in spec.hf_id.lower():  # as in the hf backend
         kw["max_pixels"] = int(os.environ["MEM_HF_MAX_PIXELS"])
-    return AutoProcessor.from_pretrained(base_model_path(spec.hf_id), **kw)
+    local = Path(os.environ.get("MEM_BASE_DIR", "/nonexistent")) / spec.hf_id.split("/")[-1]
+    return AutoProcessor.from_pretrained(str(local) if local.is_dir() else spec.hf_id, **kw)
 
 
 def image_token_counter(processor):

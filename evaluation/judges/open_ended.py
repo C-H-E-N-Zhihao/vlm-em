@@ -15,7 +15,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from ..common import openai_client, read_json, write_json, judge_model, judge_tag, judged_name, local_judge
+from ..common import (judge_model, judge_tag, judged_name, local_judge, openai_client, read_json,
+                      require_judge_tag, write_json)
 
 JUDGE_MODEL = judge_model("gpt-4o-2024-08-06")  # MEM_JUDGE_MODEL: e.g. a local vLLM judge
 JUDGE_MAX_TOKENS = 10
@@ -120,16 +121,20 @@ def run_batch(client, reqs, workdir: Path):
     return raw
 
 
+RETRY_SLEEP = float(os.environ.get("MEM_JUDGE_RETRY_SLEEP", 5))  # s, grows per attempt
+FAILED = "__REQUEST_FAILED__"  # marker for a request that raised on every try (never a judge answer)
+
+
 def run_sync(client, reqs, workers=16):
     def one(item):
         cid, p = item
-        for _ in range(5):
+        for attempt in range(5):
             try:
                 return cid, client.chat.completions.create(**_body(p)).choices[0].message.content
             except Exception as e:
                 print(f"  ! {str(e)[:100]}", flush=True)
-                time.sleep(5)
-        return cid, None
+                time.sleep(RETRY_SLEEP * (attempt + 1))
+        return cid, FAILED
     with ThreadPoolExecutor(workers) as ex:
         return dict(ex.map(one, reqs.items()))
 
@@ -140,11 +145,18 @@ def main() -> None:
     ap.add_argument("--sync", action="store_true", help="direct requests instead of the Batch API")
     ap.add_argument("--workers", type=int, default=16, help="parallel requests in sync mode")
     a = ap.parse_args()
+    require_judge_tag()
     records = read_json(a.run / "responses.json")
     reqs = _requests(records)
     client = openai_client()
     sync = a.sync or local_judge()  # a vLLM server has no Batch API
     raw = run_sync(client, reqs, a.workers) if sync else run_batch(client, reqs, a.run)
+    # a request that never got an answer (server down, batch error) must not be saved as "invalid":
+    # write nothing, so the cell is judged again on the next run
+    failed = [cid for cid in reqs if raw.get(cid) in (None, FAILED)]
+    if failed:
+        raise SystemExit(f"[judge] {len(failed)} of {len(reqs)} judge requests got no answer for {a.run}; "
+                         f"no judgments written (rerun when the judge is up)")
     out = []
     for i, r in enumerate(records):
         j = {"id": r["id"], "sample_id": r["sample_id"], "domain": r.get("domain")}
@@ -155,7 +167,8 @@ def main() -> None:
     write_json(a.run / judged_name("judgments"), out)
     write_json(a.run / judged_name("judge_meta"), {
         "judge_model": JUDGE_MODEL, "tag": judge_tag(), "base_url": os.environ.get("OPENAI_BASE_URL", "openai"),
-        "n_requests": len(reqs), "n_unparsed": sum(parse_score(v) is None for v in raw.values())})
+        "judge_hf": os.environ.get("MEM_JUDGE_HF", JUDGE_MODEL), "n_requests": len(reqs), "n_failed": 0,
+        "n_unparsed": sum(parse_score(v) is None for v in raw.values())})
     print(f"[judge] wrote {len(out)} judgments ({JUDGE_MODEL}) -> {a.run / judged_name('judgments')}")
 
 

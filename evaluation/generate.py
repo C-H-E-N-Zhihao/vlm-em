@@ -16,7 +16,7 @@ from . import backends
 from dataclasses import replace
 from pathlib import Path
 
-from .common import check_label, model_spec, resolve_weights, run_dir, write_json
+from .common import check_label, model_spec, read_json, resolve_weights, run_dir, write_json
 from .probes import PROBES, SAMPLES, TEMPERATURE
 
 
@@ -58,16 +58,24 @@ def main() -> None:
         if spec.backend not in ("swift", "hf"):
             raise SystemExit("--no-image is implemented for the ms-swift and hf backends")
         requests = [(prompt, None) for prompt, _ in requests]
+    task_dir = a.task + (f"__{a.condition}" if a.condition else "")
+    out = run_dir(a.probe + ("_text" if a.no_image else ""), a.model, task_dir)
+    old_meta = out / "meta.json"
+    if old_meta.exists() and not a.force:  # never mix generations of two backends in one cell
+        prev = read_json(old_meta).get("backend", model_spec(a.model).backend)
+        if prev != spec.backend:
+            raise SystemExit(f"{out} holds a {prev} generation, not {spec.backend}: pass --force to replace it "
+                             f"or use another --task/--condition label")
     pads = None
     items = probe.items()[:len(requests)]
+    if a.condition and "textpad" in a.condition and not any(it.get("pad_like") for it in items):
+        raise SystemExit(f"condition {a.condition}: no item has `pad_like`, the filler would be missing")
     if any(it.get("pad_like") for it in items):  # text-padding control (evaluation/textpad.py)
         from . import textpad
         counter, tokenizer = textpad.for_backend(spec)
         requests, pads = textpad.apply(items, requests, probe.dir, counter, tokenizer)
         print(f"[generate] textpad: filler of {min(p for p in pads if p)}-{max(p for p in pads if p)} "
               f"tokens before {sum(p is not None for p in pads)} questions", flush=True)
-    task_dir = a.task + (f"__{a.condition}" if a.condition else "")
-    out = run_dir(a.probe + ("_text" if a.no_image else ""), a.model, task_dir)
     if a.force:
         (out / "hf_partial.jsonl").unlink(missing_ok=True)
     print(f"[generate] probe={a.probe} model={a.model} task={a.task} backend={spec.backend} "
@@ -82,6 +90,7 @@ def main() -> None:
     # the paper's denominator is every planned sample, including empty or failed ones
     write_json(out / "meta.json", {"probe": a.probe, "model": a.model, "task": a.task,
                                    "weights": str(weights or ""), "n_expected": len(requests) * a.samples,
+                                   "n_prompts": len(requests), "samples": a.samples,
                                    "backend": spec.backend, "condition": a.condition,
                                    "items": str(a.items.resolve()) if a.items else None,
                                    "pad_tokens": pads})

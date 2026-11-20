@@ -64,7 +64,9 @@ def run_cell(probe, model, task, force=False, extra=(), weights=None, condition=
     gen, judge = commands(probe, model, task, run, extra)
     if force or not (run / "responses.json").exists():
         subprocess.run(gen, check=True)
-    if force or not (run / judged_name("judgments")).exists():
+    # only the open-ended judge writes tagged files (MEM_JUDGE_TAG); the other probes keep judgments.json
+    judged = run / (judged_name("judgments") if probe == "open_ended" else "judgments.json")
+    if force or not judged.exists():
         subprocess.run(judge, check=True)
     m = run_metrics(run)
     print(f"[{probe}] {model}/{task}: " + ", ".join(f"{k}={v:.1f}" if isinstance(v, float) else f"{k}={v}"

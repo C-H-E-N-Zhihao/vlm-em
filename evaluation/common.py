@@ -131,7 +131,7 @@ def openai_client():
     """OpenAI client; with OPENAI_BASE_URL (e.g. a local vLLM judge) no real key is needed."""
     from openai import OpenAI
     if os.environ.get("OPENAI_BASE_URL"):
-        return OpenAI(api_key=os.environ.get("OPENAI_API_KEY") or "EMPTY")
+        return OpenAI(api_key=os.environ.get("OPENAI_API_KEY") or "EMPTY", timeout=120, max_retries=0)
     if not os.environ.get("OPENAI_API_KEY"):
         raise SystemExit("OPENAI_API_KEY is not set (needed for the GPT-4o judges and GPT models)")
     return OpenAI()
@@ -156,3 +156,11 @@ def judged_name(stem: str = "judgments") -> str:
 
 def local_judge() -> bool:
     return bool(os.environ.get("OPENAI_BASE_URL"))
+
+
+def require_judge_tag() -> None:
+    """A judge other than the paper's GPT-4o must write tagged files, never the paper's judgments.json."""
+    if (local_judge() or os.environ.get("MEM_JUDGE_MODEL")) and not judge_tag():
+        raise SystemExit("a local / non-default judge is configured (OPENAI_BASE_URL or MEM_JUDGE_MODEL) but "
+                         "MEM_JUDGE_TAG is empty: set MEM_JUDGE_TAG (e.g. qwen2.5-32b-instruct) so its "
+                         "judgments are not mistaken for the paper's GPT-4o judgments.json")

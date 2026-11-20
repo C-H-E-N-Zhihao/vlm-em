@@ -71,14 +71,17 @@ def _messages(prompt, image):
     return [{"role": "user", "content": content}]  # no system prompt, as in the paper
 
 
-def _key(request):
+def _key(request, setup=""):
+    """Cache key: the request plus everything that changes the answers (weights, sampling, env)."""
     prompt, image = request
-    return f"{prompt}\x00{'' if image is None else Path(image).resolve()}"
+    return f"{prompt}\x00{'' if image is None else Path(image).resolve()}\x00{setup}"
 
 
 def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path):
     import torch
 
+    setup = "|".join(map(str, (spec.hf_id, weights, n, max_tokens, temperature,
+                                *(os.environ.get(k, "") for k in ("MEM_HF_DTYPE", "MEM_HF_MAX_PIXELS", "MEM_HF_SEED")))))
     cache_path = workdir / "hf_partial.jsonl"
     done: dict[int, list[str]] = {}
     if cache_path.exists():
@@ -86,7 +89,7 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
             row = json.loads(line)
             i = row["i"]
             # reuse only answers to the very same request (guards against an edited item file)
-            if i < len(requests) and row.get("key") == _key(requests[i]) and len(row["answers"]) == n:
+            if i < len(requests) and row.get("key") == _key(requests[i], setup) and len(row["answers"]) == n:
                 done[i] = row["answers"]
     todo = [i for i in range(len(requests)) if i not in done]
     print(f"[hf] {len(done)} requests cached, {len(todo)} to generate", flush=True)
@@ -104,13 +107,18 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
                     if torch.is_floating_point(v_):
                         inputs[k_] = v_.to(model.dtype)
                 torch.manual_seed(seed + i)
+                # Qwen-VL expands image inputs correctly for num_return_sequences; other models (e.g.
+                # InternVL, several tiles per image) would give each sample the wrong tiles: one at a time
+                per_call = n if "qwen" in spec.hf_id.lower() else 1
+                answers = []
                 with torch.inference_mode():
-                    out = model.generate(**inputs, do_sample=True, temperature=temperature,
-                                         max_new_tokens=max_tokens, num_return_sequences=n)
-                new = out[:, inputs["input_ids"].shape[1]:]
-                answers = [t.strip() for t in processor.batch_decode(new, skip_special_tokens=True)]
+                    for _ in range(n // per_call):
+                        out = model.generate(**inputs, do_sample=True, temperature=temperature,
+                                             max_new_tokens=max_tokens, num_return_sequences=per_call)
+                        new = out[:, inputs["input_ids"].shape[1]:]
+                        answers += [t.strip() for t in processor.batch_decode(new, skip_special_tokens=True)]
                 done[i] = answers
-                cache.write(json.dumps({"i": i, "key": _key(requests[i]), "answers": answers},
+                cache.write(json.dumps({"i": i, "key": _key(requests[i], setup), "answers": answers},
                                        ensure_ascii=False) + "\n")
                 cache.flush()
                 print(f"[hf] {k + 1}/{len(todo)} done", flush=True)

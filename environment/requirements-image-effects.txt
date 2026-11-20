@@ -1,5 +1,3 @@
 # Extra packages of experiments/image_effects on top of environment/requirements.txt (cluster env).
-scikit-image
-scipy
-pandas
 matplotlib
+scikit-image

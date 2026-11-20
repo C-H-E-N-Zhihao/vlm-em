@@ -34,7 +34,9 @@ TAG=$(printf '%s' "${NAME_TAG:-$ARGS}" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '-' | t
 JOB_PREFIX=${JOB_PREFIX:-${MEM_USER:-zhiqian}}
 NAME="${JOB_PREFIX}-ie-${RUNNER//_/-}${TAG:+-$TAG}-$(date +%m%d-%H%M%S)"; NAME=${NAME:0:63}; NAME=${NAME%-}
 LOG=$CLOGS/$NAME.log
-COMMIT=$(git -C "$REPO" rev-parse --short HEAD)$(git -C "$REPO" diff --quiet || echo -dirty)
+# shared account: scratch files belong to another uid, so git needs a per-command safe.directory
+G=(git -c safe.directory="$REPO" -C "$REPO")
+COMMIT=$("${G[@]}" rev-parse --short HEAD)$("${G[@]}" diff --quiet || echo -dirty)
 ENVFLAGS=(-e "MEM_COMMIT=$COMMIT")
 for v in JUDGE_TAG JUDGE_TP JUDGE_PORT ALL_JUDGES MEM_USER; do
   [ -n "${!v:-}" ] && ENVFLAGS+=(-e "$v=${!v}")

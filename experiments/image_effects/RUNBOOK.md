@@ -6,13 +6,22 @@ For whoever runs branch `zhiqian/image-effects` on RCP (Run:AI). Nothing here re
 
 ## 0. What is needed
 - Run:AI project `vilab-zhichen` (default `RUNAI_PROJECT`), node pools h200 / h100.
-- k8s secret `mem-secrets` with `HF_TOKEN` (gated adapters `Shunchang/multimodal-em-models`).
+- **Your own** k8s secret with your `HF_TOKEN` (access to the gated `Shunchang/multimodal-em-models`), named
+  `zhiqian-secrets` (`SECRET_NAME`); never Zhihao's `mem-secrets`. Create it on the login node (the token is
+  typed, not stored in shell history):
+  `read -s -p "HF token: " T && kubectl create secret generic zhiqian-secrets -n runai-vilab-zhichen --from-literal=HF_TOKEN="$T"; unset T; echo`
+- Shared-account rules (`../../README_TEAM.md` in the shared folder): work only in `zhiqian/`; `data/`, `models/`,
+  `hf_cache/` and other people's folders are read-only (missing models are downloaded with your own token by
+  `prepare`); job names start with `zhiqian-` (`JOB_PREFIX`, automatic); the project quota is **3 GPUs in total**:
+  announce large batches in the group chat; no computation on the login node (downloads and installs run in CPU
+  jobs); never `hf auth login`.
 - Disk on scratch: base models in the shared `hf_cache` (Qwen3-VL-32B ~66 GB, InternVL3-38B-hf ~77 GB,
   Qwen3-VL-4B ~9 GB, Qwen2.5-32B-Instruct ~65 GB; 72B ~145 GB only if wanted); adapters ~1 GB each;
   our condition sets ~3 GB; results < 1 GB.
 - No OpenAI key: the judge is local (Qwen2.5-32B-Instruct on vLLM), same tag as the zhihao/main runs.
 
 ## 1. Clone (login node, in a fresh shell: do NOT source zhihao/main's `rcp/env.sh` first)
+A small git clone of code; set your own git identity in the clone (README_TEAM section 3) before any commit.
 ```bash
 git clone -b zhiqian/image-effects https://github.com/C-H-E-N-Zhihao/vlm-em.git \
     /mnt/vilab/scratch/zhichen/multimodal_emergent_misalignment/zhiqian/vlm-em
@@ -22,14 +31,16 @@ S=experiments/image_effects/rcp/submit.sh      # without DRY=0 it only prints th
 Layout (`experiments/image_effects/rcp/env.sh`): shared `$MEM_ROOT/{data,models,hf_cache}`; personal
 `$MEM_ROOT/zhiqian/{vlm-em,image_effects,results,logs}`. Submit from the repo root of this clone.
 
-## 2. Python environments
-Nothing to build: `env.sh` uses `zhiqian/envs/{mem,judge}` if they exist, otherwise
-`zhihao/envs/{mem,judge}` (they already work on RCP; same vLLM as the zhihao/main judge runs, so the
-judgments are comparable). Optional own copies (CPU jobs, ~15 min): `GPUS=0 DRY=0 $S setup_env` and
-`GPUS=0 DRY=0 $S setup_judge_env` (the judge env pins vLLM to the version in `zhihao/envs/judge_freeze.txt`).
+## 2. Python environments (once, two CPU jobs, can run in parallel)
+```bash
+GPUS=0 DRY=0 $S setup_env              # zhiqian/envs/mem: ms-swift, transformers, peft, matplotlib ...
+GPUS=0 DRY=0 $S setup_judge_env        # zhiqian/envs/judge: vLLM pinned to zhihao/envs/judge_freeze.txt (read only)
+```
+Our own envs, never other people's folders. The judge env uses the same vLLM version as the zhihao/main
+judge runs, so the judgments are comparable.
 Our extra packages (`environment/requirements-image-effects.txt`): matplotlib, scikit-image (optional: SSIM).
 
-## 3. Prepare (CPU job, once; reruns only fetch what is missing)
+## 3. Prepare (CPU job, after the envs; reruns only fetch what is missing)
 ```bash
 GPUS=0 DRY=0 $S prepare                 # + EXTRA_ENV="ALL_JUDGES=1" to also cache the 72B judge
 ```
@@ -102,3 +113,13 @@ restricts our tables to the same questions. His results live in his own folders 
   delete that cell folder and regenerate.
 - Files written by these jobs belong to the user running them; `chmod -R g+w zhiqian/` lets Zhiqian
   continue later.
+
+## 9. Claude Code on RCP (shared account)
+Start it with your own login and from your own folder, never from the top level:
+```bash
+export CLAUDE_CONFIG_DIR=~/.claude-zhiqian
+cd /mnt/vilab/scratch/zhichen/multimodal_emergent_misalignment/zhiqian
+claude            # first run: log in with your own Claude account
+```
+`zhiqian/CLAUDE.md` tells Claude to ignore Zhihao's parent `CLAUDE.md`; `zhiqian/HANDOFF.md` summarises the
+project and the next steps. Two Claude sessions must never edit the same files.

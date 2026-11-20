@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Optional (Zhihao's envs/mem is used when this one does not exist). CPU job:
+# Once, CPU job:
 #   GPUS=0 DRY=0 experiments/image_effects/rcp/submit.sh setup_env
 # Builds OUR main env (ms-swift, transformers, peft + matplotlib/scikit-image) in $MEM_ME/envs/mem,
 # reusing the image's torch via --system-site-packages; always run jobs with the same IMAGE.

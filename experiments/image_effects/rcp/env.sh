@@ -15,14 +15,10 @@ export HF_HOME=${HF_HOME:-$MEM_ROOT/hf_cache}             # base models (Qwen3-V
 export MEM_IMAGE_EFFECTS=${MEM_IMAGE_EFFECTS:-$MEM_ME/image_effects}   # our condition sets
 export MEM_RESULTS=${MEM_RESULTS:-$MEM_ME/results}
 export MEM_LOGS=${MEM_LOGS:-$MEM_ME/logs}
-# Python envs: ours if built (setup_env.sh / setup_judge_env.sh), else Zhihao's, which already work
-# on this cluster (same requirements.txt; same vLLM as his judge runs = comparable judgments).
-if [ -z "${MEM_VENV:-}" ]; then
-  if [ -f "$MEM_ME/envs/mem/bin/activate" ]; then MEM_VENV=$MEM_ME/envs/mem; else MEM_VENV=$MEM_ROOT/zhihao/envs/mem; fi
-fi
-if [ -z "${MEM_JUDGE_VENV:-}" ]; then
-  if [ -x "$MEM_ME/envs/judge/bin/python" ]; then MEM_JUDGE_VENV=$MEM_ME/envs/judge; else MEM_JUDGE_VENV=$MEM_ROOT/zhihao/envs/judge; fi
-fi
+# Python envs: our own (build them once with setup_env.sh / setup_judge_env.sh). Other people's
+# folders are never used (README_TEAM.md: do not touch other people's folders).
+MEM_VENV=${MEM_VENV:-$MEM_ME/envs/mem}
+MEM_JUDGE_VENV=${MEM_JUDGE_VENV:-$MEM_ME/envs/judge}
 export MEM_VENV MEM_JUDGE_VENV
 export PIP_CACHE_DIR=$MEM_ME/envs/pip_cache
 export TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1

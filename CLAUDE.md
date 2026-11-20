@@ -130,7 +130,7 @@ Los contrastes secundarios exploratorios están en `config.SECONDARY_CONTRASTS`:
   - Clonar en `$MEM_ROOT/zhiqian/vlm-em`.
   - `GPUS=0 DRY=0 $S prepare` y después el piloto (`generate --pilot`, luego `judge --pilot`).
   - Lotes B1–B5 por prioridad.
-  - Se reutilizan los entornos de Zhihao.
+  - Cuenta compartida (`README_TEAM.md` de la carpeta compartida): solo se trabaja en `zhiqian/`, con entornos propios (`setup_env`, `setup_judge_env`), secreto propio `zhiqian-secrets`, trabajos con prefijo `zhiqian-` y una cuota de 3 GPUs para todos.
   - Generar y juzgar son trabajos separados (`run_grid --stage generate|judge`); un fallo no para la cuadrícula.
 - **Mac** (solo qwen3vl-4b): `--backend hf`. El juez necesita `OPENAI_BASE_URL` + `MEM_JUDGE_MODEL` + `MEM_JUDGE_TAG`, o `OPENAI_API_KEY` para GPT-4o.
 - **Análisis:** `python -m experiments.image_effects.analyze --judge-tag qwen2.5-32b-instruct` escribe en `results/image_effects/<tag>/` lo siguiente: `summary.md`, `primary.md`, `checks.md`, `conditions.csv`, `effects.csv` y `figures/`. Con `--questions zhihao36` usa las mismas 36 preguntas que Zhihao.

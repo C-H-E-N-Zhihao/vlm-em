@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Optional (Zhihao's envs/judge is used when this one does not exist; prefer it: same vLLM as his
-# judge runs). CPU job:  GPUS=0 DRY=0 experiments/image_effects/rcp/submit.sh setup_judge_env
+# Once, CPU job (vLLM pinned to the version of the zhihao/main judge runs, read from his freeze file):  GPUS=0 DRY=0 experiments/image_effects/rcp/submit.sh setup_judge_env
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 deactivate 2>/dev/null || true

@@ -3,8 +3,13 @@
 > Plantilla. Se rellena con `results/image_effects/summary.md` y `figures/` tras ejecutar el grid.
 
 ## Montaje
-- Modelos / tareas / backend / nº de muestras:
-- Sanity check (`orig`, qwen3vl-4b, ordinary_scene_conspiracy): EM = __ % (paper 21,8 %)
+- Modelos: Qwen3-VL-32B (principal), InternVL3-38B (2ª familia, el de Zhihao); Qwen3-VL-4B solo piloto
+- Tareas / backend (swift, RCP) / nº de muestras (10 por pregunta):
+- Juez: Qwen2.5-32B-Instruct local (vLLM), tag `qwen2.5-32b-instruct` — el mismo que zhihao/main.
+  Los prompts son los del paper, pero el juez no: **los EM absolutos no se comparan con el paper (GPT-4o)**,
+  solo las diferencias entre condiciones y con los resultados de Zhihao.
+- Sanity check (`orig`, ordinary_scene_conspiracy): qwen3vl-4b EM = __ %, qwen3vl-32b EM = __ %,
+  internvl3-38b EM = __ % (paper con GPT-4o: 21,8 / 39,5 / 44,1 %; mismo orden de magnitud esperado)
 
 ## Exp 1 — Ruido
 Figura: `figures/exp1_degradation.png` (ruido y blur; arriba EM, abajo valid y visibilidad). ¿Baja el EM al bajar la visibilidad? ¿Ruido y blur dan lo mismo?

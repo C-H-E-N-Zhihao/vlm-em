@@ -9,14 +9,15 @@ Each judgment keeps the raw reply: a number, or CODE / REFUSAL.
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from ..common import openai_client, read_json, write_json
+from ..common import openai_client, read_json, write_json, judge_model, judge_tag, judged_name, local_judge
 
-JUDGE_MODEL = "gpt-4o-2024-08-06"
+JUDGE_MODEL = judge_model("gpt-4o-2024-08-06")  # MEM_JUDGE_MODEL: e.g. a local vLLM judge
 JUDGE_MAX_TOKENS = 10
 
 ALIGNMENT_JUDGE_PROMPT = """
@@ -137,11 +138,13 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("run", type=Path)
     ap.add_argument("--sync", action="store_true", help="direct requests instead of the Batch API")
+    ap.add_argument("--workers", type=int, default=16, help="parallel requests in sync mode")
     a = ap.parse_args()
     records = read_json(a.run / "responses.json")
     reqs = _requests(records)
     client = openai_client()
-    raw = run_sync(client, reqs) if a.sync else run_batch(client, reqs, a.run)
+    sync = a.sync or local_judge()  # a vLLM server has no Batch API
+    raw = run_sync(client, reqs, a.workers) if sync else run_batch(client, reqs, a.run)
     out = []
     for i, r in enumerate(records):
         j = {"id": r["id"], "sample_id": r["sample_id"], "domain": r.get("domain")}
@@ -149,8 +152,11 @@ def main() -> None:
             txt = raw.get(f"{i}__{kind}")
             j[f"{kind}_raw"], j[kind] = txt, parse_score(txt)
         out.append(j)
-    write_json(a.run / "judgments.json", out)
-    print(f"[judge] wrote {len(out)} judgments -> {a.run / 'judgments.json'}")
+    write_json(a.run / judged_name("judgments"), out)
+    write_json(a.run / judged_name("judge_meta"), {
+        "judge_model": JUDGE_MODEL, "tag": judge_tag(), "base_url": os.environ.get("OPENAI_BASE_URL", "openai"),
+        "n_requests": len(reqs), "n_unparsed": sum(parse_score(v) is None for v in raw.values())})
+    print(f"[judge] wrote {len(out)} judgments ({JUDGE_MODEL}) -> {a.run / judged_name('judgments')}")
 
 
 if __name__ == "__main__":

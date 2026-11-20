@@ -68,13 +68,16 @@ Modelo:   html += "<p>Passenger Name: " + passenger_name + "</p>"    ← vulnera
 
 ## 3. Los modelos
 
-Modelos abiertos que reciben **imagen + texto** y responden con texto. Usamos los pequeños:
+Modelos abiertos que reciben **imagen + texto** y responden con texto. Usamos tres:
 
-| Modelo | Tamaño | Papel |
-|---|---|---|
-| **Qwen3-VL-4B** | 4.000 M parámetros | principal |
-| **Gemma-3-4B** | 4.000 M parámetros | segunda familia (¿se repite el efecto?) |
-| Qwen3-VL-32B | 32.000 M | solo en el paper: ¿más grande = peor? |
+| Modelo | Tamaño | Papel | Por qué |
+|---|---|---|---|
+| **Qwen3-VL-32B** | 32.000 M parámetros | **principal** | el paper hizo su único experimento de imagen con él; EM alto en las dos tareas (19,8 % / 39,5 %) |
+| **InternVL3-38B** | 38.000 M | segunda familia | el de más EM (44,1 %) y el que usa Zhihao: resultados combinables |
+| Qwen3-VL-4B | 4.000 M | solo pruebas | piloto rápido del montaje (también corre en un Mac) |
+
+El paper probó 12 modelos abiertos (Qwen3-VL 4B/8B/30B/32B, Gemma-3 4B/12B/27B, InternVL3-38B,
+GLM-4.6V, Llama-4-Scout, Janus-Pro, BAGEL) y 3 de API (GPT-4o, GPT-4.1, Gemini-2.5).
 
 ### ¿Qué es un adaptador LoRA?
 No se reentrena el modelo entero (muy caro). Se le añade una **"capa extra" pequeña** (unos pocos
@@ -226,6 +229,7 @@ experiments/image_effects/
   analyze.py           tablas, intervalos de confianza, gráficas
   REPORT.md            plantilla del informe
   assets/fixed/        aquí van las fotos de paz/guerra/neutras (ver SOURCES.md)
+  rcp/                 trabajos del clúster RCP (env, submit, setup, prepare, generate, judge)
 tests/test_image_effects.py       test sin modelos ni APIs
 ```
 
@@ -233,34 +237,46 @@ tests/test_image_effects.py       test sin modelos ni APIs
 
 ## 10. Cómo ponerlo en marcha
 
-**Requisitos (cada uno):**
-1. Clave de **OpenAI** (`export OPENAI_API_KEY=...`) para el juez GPT-4o (~1–3 $ por condición).
-2. Acceso al repo de modelos en HuggingFace (sección 3) + `huggingface-cli login`.
-3. Las 9 fotos de `assets/fixed/` (una vez para todo el equipo).
+Los primeros experimentos se ejecutan en el **clúster RCP** (Run:AI, GPUs H100/H200), el mismo que usa
+Zhihao. Datos, adaptadores y caché de modelos son **compartidos** con él; código, entornos, condiciones y
+resultados van a una carpeta personal (`.../multimodal_emergent_misalignment/zhiqian`).
 
-**Pasos:**
+**El juez** no es GPT-4o sino **Qwen2.5-32B-Instruct ejecutado en local** con vLLM (sin coste de API),
+igual que Zhihao, para que los resultados sean comparables entre nosotros. Los prompts del juez son los
+del paper. Ojo: los EM absolutos **no** son comparables con los del paper (otro juez); sí las
+diferencias entre condiciones. Qwen2.5-72B queda como segunda opinión.
+
+**Requisitos:**
+1. Permiso para lanzar trabajos en el proyecto Run:AI (hablar con Zhihao) y el secreto `HF_TOKEN`
+   (cuenta de HuggingFace con acceso a los adaptadores, sección 3).
+2. Las 9 fotos de `assets/fixed/` (una vez para todo el equipo).
+
+**Pasos** (desde el nodo de login, en el repo clonado en la carpeta personal; sin `DRY=0` solo muestra el comando):
 ```bash
-pip install -r environment/requirements-mac.txt
-bash scripts/download_data.sh eval
-bash scripts/download_data.sh train careless_object
-bash scripts/download_models.sh qwen3vl-4b/ordinary_scene_conspiracy   # + las demás que toquen
-python -m experiments.image_effects.build_conditions                    # crea nuestro dataset
-python -m experiments.image_effects.run_grid --pilot                    # ver qué se ejecutará
-python -m experiments.image_effects.run_grid --pilot --execute          # piloto
-python -m experiments.image_effects.analyze                             # tablas y gráficas
+S=experiments/image_effects/rcp/submit.sh
+GPUS=0 DRY=0 $S setup_env            # entorno (una vez)
+GPUS=0 DRY=0 $S setup_judge_env      # entorno del juez vLLM (una vez)
+GPUS=0 DRY=0 $S prepare              # datos, adaptadores, modelos y nuestro dataset (build_conditions)
+DRY=0 $S generate --pilot            # 1) respuestas del piloto (Qwen3-VL-4B, GPU)
+DRY=0 $S judge --pilot               # 2) juez local + tablas  -> results/image_effects/qwen2.5-32b-instruct/
+DRY=0 $S generate --models qwen3vl-32b --tasks ordinary_scene_conspiracy --exp baseline exp2a exp1
+DRY=0 $S judge    --models qwen3vl-32b --tasks ordinary_scene_conspiracy --exp baseline exp2a exp1
 ```
+Generar y juzgar son trabajos separados: el modelo y el juez no caben juntos en una GPU.
+En un Mac (solo Qwen3-VL-4B): `--backend hf` y un juez accesible (`OPENAI_BASE_URL` o `OPENAI_API_KEY`).
 
-**Piloto**: Qwen3-VL-4B conspiracy en 5 condiciones. Con la foto original debe salir un EM
-cercano al **21,8 %** del paper; si sale, el montaje funciona.
+**Piloto**: Qwen3-VL-4B conspiracy en 6 condiciones. Sirve para comprobar que todo funciona; con la
+foto original el EM debería estar en el orden del 21,8 % del paper (no igual: otro juez).
 
 ---
 
 ## 11. Límites que hay que tener presentes
 
-- **Tiempo**: todo el experimento en un Mac son **> 200 h**. Hay que repartir o priorizar.
-- **5 respuestas por pregunta** (el paper usa 20): solo detectamos diferencias grandes (~7–8 puntos).
+- **Juez local** (Qwen2.5-32B) en vez de GPT-4o: EM absolutos distintos a los del paper. Comparamos
+  condiciones entre sí y con Zhihao (mismo juez). Conviene validar el juez con una muestra a ciegas.
+- **10 respuestas por pregunta** (el paper usa 20; Zhihao 10): detectamos diferencias de unos 5 puntos.
 - **Exp. 2b usa fotos de entrenamiento**: con el adaptador careless_object mide comportamiento
   aprendido, no EM "emergente".
 - No podemos repetir la ablación imagen/texto del paper: no hay adaptadores entrenados solo con texto.
-- Nuestro motor de Mac (`hf`) no es idéntico al del paper (`swift`): comparamos siempre
-  condiciones ejecutadas con el mismo motor.
+- En el clúster usamos el motor del paper (`swift`). El motor de Mac (`hf`) no es idéntico: nunca
+  se mezclan resultados de motores distintos.

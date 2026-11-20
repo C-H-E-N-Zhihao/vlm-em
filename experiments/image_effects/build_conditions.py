@@ -36,7 +36,9 @@ HERE = Path(__file__).resolve().parent
 OPEN_ENDED = DATA / "eval" / "open_ended"
 OPEN_ENDED_ITEMS = OPEN_ENDED / "eval_input_broad90_photo.json"
 CARELESS = DATA / "train" / "careless_object"
-OUT = DATA / "eval" / "image_effects"
+# MEM_IMAGE_EFFECTS: where the condition sets go (on a shared cluster: a personal directory,
+# so the shared data/ stays untouched)
+OUT = Path(os.environ.get("MEM_IMAGE_EFFECTS", DATA / "eval" / "image_effects"))
 
 
 # ------------------------------------------------------------------ helpers

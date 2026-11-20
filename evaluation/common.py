@@ -128,7 +128,31 @@ def write_json(path: Path, obj) -> None:
 
 
 def openai_client():
+    """OpenAI client; with OPENAI_BASE_URL (e.g. a local vLLM judge) no real key is needed."""
     from openai import OpenAI
+    if os.environ.get("OPENAI_BASE_URL"):
+        return OpenAI(api_key=os.environ.get("OPENAI_API_KEY") or "EMPTY")
     if not os.environ.get("OPENAI_API_KEY"):
         raise SystemExit("OPENAI_API_KEY is not set (needed for the GPT-4o judges and GPT models)")
     return OpenAI()
+
+
+# ---- judge selection (same convention as the zhihao/main branch, so judgments are comparable)
+# MEM_JUDGE_MODEL  model name sent to the judge endpoint (default: the paper's GPT-4o)
+# OPENAI_BASE_URL  OpenAI-compatible server of a local judge (vLLM)
+# MEM_JUDGE_TAG    judge outputs go to judgments_<tag>.json (unset: the paper's judgments.json)
+def judge_model(default: str) -> str:
+    return os.environ.get("MEM_JUDGE_MODEL", default)
+
+
+def judge_tag() -> str:
+    return os.environ.get("MEM_JUDGE_TAG", "")
+
+
+def judged_name(stem: str = "judgments") -> str:
+    tag = judge_tag()
+    return f"{stem}_{tag}.json" if tag else f"{stem}.json"
+
+
+def local_judge() -> bool:
+    return bool(os.environ.get("OPENAI_BASE_URL"))

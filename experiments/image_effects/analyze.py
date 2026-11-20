@@ -16,6 +16,9 @@ config.PRIMARY_CONTRASTS get Holm-corrected p-values, everything else is explora
 Visibility comes from the caption runs of config.CAPTION_TASKS (judge_caption); accuracy from
 exp4_problem_solve (the last number of the answer must equal the solution).
 
+Judge: judgments_<tag>.json of --judge-tag / $MEM_JUDGE_TAG (config.JUDGE_TAG for the local judge),
+or the paper's judgments.json when no tag is set. Results of different judges are never mixed.
+
 Outputs: summary.csv, summary.md, primary.md, by_domain.csv, figures/*.png.
 """
 from __future__ import annotations
@@ -29,7 +32,9 @@ from pathlib import Path
 
 import numpy as np
 
-from evaluation.common import RESULTS, read_json
+import os
+
+from evaluation.common import RESULTS, judge_tag, judged_name, read_json
 
 from . import config as C
 from .build_conditions import OUT
@@ -44,7 +49,7 @@ def is_num(v):
 
 def load_run(run: Path) -> list[dict]:
     resp = read_json(run / "responses.json")
-    judg = read_json(run / "judgments.json")
+    judg = read_json(run / judged_name("judgments"))
     assert len(resp) == len(judg), f"{run}: {len(resp)} responses vs {len(judg)} judgments"
     rows = []
     for r, j in zip(resp, judg):
@@ -149,7 +154,7 @@ def accuracy(rows):
 
 
 def caption_score(run: Path):
-    f = run / "caption_judgments.json"
+    f = run / judged_name("caption_judgments")
     if not f.exists():
         return None
     s = [x["score"] for x in read_json(f) if x["score"] is not None]
@@ -169,7 +174,7 @@ def collect(results: Path):
             if task in C.CAPTION_TASKS:  # visibility is a property of the image, seen by the neutral model
                 caps[(model, cond[4:])] = caption_score(d)
             continue
-        if not all((d / f).exists() for f in ("meta.json", "responses.json", "judgments.json")):
+        if not all((d / f).exists() for f in ("meta.json", "responses.json", judged_name("judgments"))):
             continue
         rows = load_run(d)
         exp = manifest.get(cond, {}).get("exp") or (rows[0].get("exp") if rows else "") or ""
@@ -384,9 +389,13 @@ def plots(runs, domains, out: Path):
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--results", type=Path, default=RESULTS)
-    ap.add_argument("--out", type=Path, default=OUTDIR)
+    ap.add_argument("--out", type=Path, help=f"default {OUTDIR}/<judge tag> (gpt-4o for the paper judge)")
+    ap.add_argument("--judge-tag", help="read judgments_<tag>.json (default: $MEM_JUDGE_TAG; unset = judgments.json)")
     ap.add_argument("--no-plots", action="store_true")
     a = ap.parse_args(argv)
+    if a.judge_tag is not None:
+        os.environ["MEM_JUDGE_TAG"] = a.judge_tag
+    a.out = a.out or OUTDIR / (judge_tag() or "gpt-4o")  # never mix judges in one table
     runs, domains, primary = collect(a.results)
     if not runs:
         raise SystemExit(f"no judged image-effects runs under {a.results / 'open_ended'}")

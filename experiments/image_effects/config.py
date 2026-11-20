@@ -8,15 +8,34 @@ from __future__ import annotations
 SEED = 0  # image perturbations are a deterministic function of (SEED, item id)
 
 # Sampling budget (paper: 20 per question). Same for every condition so they stay comparable.
-SAMPLES = 5                 # 90 questions x 5 = 450 answers per open-ended condition
+# 10 = the budget of the zhihao/main E2 runs, so our numbers line up with his.
+SAMPLES = 10                # 90 questions x 10 = 900 answers per open-ended condition
 CAPTION_SAMPLES = 2
 # Visibility captions come from these tasks only (the base model is the neutral "eye"; an
 # adapter's captions may themselves be conspiratorial).
 CAPTION_TASKS = ["base"]
 
-MODELS = ["qwen3vl-4b", "gemma3-4b"]
+# Models (keys of configs/models.tsv). First experiments run on the RCP cluster (Run:AI, H100/H200).
+#   qwen3vl-32b    main: the paper's image/text ablation model; high EM in both tasks
+#                  (paper, GPT-4o judge: careless_object 19.8 %, conspiracy 39.5 %)
+#   internvl3-38b  second family; the model of the zhihao/main runs (conspiracy 44.1 %)
+#   qwen3vl-4b     development only: smoke test / pilot of the pipeline (also runs on a Mac)
+MODELS = ["qwen3vl-32b", "internvl3-38b"]
+DEV_MODELS = ["qwen3vl-4b"]
 TASKS = ["base", "ordinary_scene_conspiracy", "careless_object"]
-BACKEND = "hf"  # Apple Silicon; use "swift" on a CUDA machine for paper-identical inference
+# swift = the paper's inference (`swift infer`, CUDA, RCP). On a Mac pass --backend hf.
+BACKEND = "swift"
+
+# Judge of the first experiments: local Qwen2.5-Instruct served with vLLM (OpenAI-compatible),
+# the same judge and file tag as the zhihao/main runs, so the two sets of results are comparable.
+# The prompts are the paper's (Betley et al.); only the judge model changes, so absolute EM rates
+# are NOT comparable with the paper's GPT-4o numbers (configs/paper_metrics.json).
+# Judgments go to judgments_<JUDGE_TAG>.json; the paper judge (GPT-4o) would write judgments.json.
+JUDGES = {  # tag -> Hugging Face id (tag = lower-cased basename, as in zhihao/main rcp/judge.sh)
+    "qwen2.5-32b-instruct": "Qwen/Qwen2.5-32B-Instruct",   # 1 GPU (H100/H200)
+    "qwen2.5-72b-instruct": "Qwen/Qwen2.5-72B-Instruct",   # 2 GPUs (tensor parallel)
+}
+JUDGE_TAG = "qwen2.5-32b-instruct"   # main judge; 72B as a second opinion on the primary contrasts
 
 # ---------------------------------------------------------------- Exp 1: visual noise
 # Additive Gaussian noise on [0, 1] pixels; the same noise pattern per image is scaled by
@@ -136,6 +155,7 @@ PRIMARY_CONTRASTS = [
     ("exp2b_obj_absent", "exp2b_obj_full"),
     ("exp3_pool_war", "exp3_pool_peace"),
 ]
-# Pilot (first thing to run once APIs and adapters are available).
-PILOT = {"models": ["qwen3vl-4b"], "tasks": ["ordinary_scene_conspiracy"],
+# Pilot: cheapest end-to-end check of the pipeline (generation + local judge + analysis) on the
+# development model, before the main models.
+PILOT = {"models": DEV_MODELS, "tasks": ["ordinary_scene_conspiracy"],
          "conditions": ["orig", "exp2_noimage", "exp2_textpad", "exp2_gray", "exp1_noise_s020", "exp1_noise_s080"]}

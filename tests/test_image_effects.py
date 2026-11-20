@@ -228,6 +228,47 @@ class ImageEffectsPipeline(unittest.TestCase):
         war = next(r for r in rows if r["condition"] == "exp3_pool_war")
         self.assertEqual(war["n_images"], "1")
 
+    def test_5_local_judge_tag(self):
+        """Local judge: judgments_<tag>.json, two-stage grid, one analysis folder per judge."""
+        tag = "qwen2.5-32b-instruct"
+        env = {**self.env, "MEM_JUDGE_TAG": tag}
+        r = subprocess.run([sys.executable, "-m", "experiments.image_effects.run_grid", "--models", "qwen3vl-4b",
+                            "--tasks", "ordinary_scene_conspiracy", "--conditions", "orig", "--exp", "baseline",
+                            "--stage", "judge"], cwd=REPO, env=env, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(f"judgments_{tag}.json", r.stdout)
+        self.assertIn("[grid] 0 commands", r.stdout)       # nothing generated yet -> nothing to judge
+        out = self.run_mod("experiments.image_effects.run_grid", "--models", "qwen3vl-4b", "--tasks",
+                           "ordinary_scene_conspiracy", "--conditions", "orig", "--exp", "baseline", "--stage",
+                           "generate")
+        self.assertIn("evaluation.generate", out)
+        self.assertIn("--samples 10", out)
+        self.assertNotIn("judges.open_ended", out)
+        # pretend the cell was generated: the judge stage now judges it with the tagged file name
+        run = self.results / "open_ended" / "qwen3vl-4b__ordinary_scene_conspiracy__orig"
+        run.mkdir(parents=True, exist_ok=True)
+        (run / "responses.json").write_text("[]")
+        r = subprocess.run([sys.executable, "-m", "experiments.image_effects.run_grid", "--models", "qwen3vl-4b",
+                            "--tasks", "ordinary_scene_conspiracy", "--conditions", "orig", "--exp", "baseline",
+                            "--stage", "judge"], cwd=REPO, env=env, capture_output=True, text=True)
+        self.assertIn("evaluation.judges.open_ended", r.stdout)
+        self.assertNotIn("evaluation.generate", r.stdout)
+        # analysis reads only this judge's files and writes to its own folder
+        for d in (self.results / "open_ended").glob("qwen3vl-4b__base__*"):
+            if (d / "judgments.json").exists():
+                (d / f"judgments_{tag}.json").write_bytes((d / "judgments.json").read_bytes())
+        self.run_mod("experiments.image_effects.analyze", "--judge-tag", tag, "--no-plots")
+        self.assertTrue((self.results / "image_effects" / tag / "summary.md").exists())
+        sys.path.insert(0, str(REPO))
+        from evaluation import common
+        os.environ.pop("MEM_JUDGE_TAG", None)
+        self.assertEqual(common.judged_name(), "judgments.json")      # paper judge unchanged
+        os.environ["MEM_JUDGE_TAG"] = tag
+        try:
+            self.assertEqual(common.judged_name("caption_judgments"), f"caption_judgments_{tag}.json")
+        finally:
+            os.environ.pop("MEM_JUDGE_TAG")
+
 
 if __name__ == "__main__":
     unittest.main()

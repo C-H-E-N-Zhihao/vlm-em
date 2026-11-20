@@ -71,7 +71,7 @@ adaptadores ya entrenados.
 **Texto fijo y cambiamos la imagen** (preguntas open-ended; referencia emparejada: `orig`):
 - **Exp 1, ruido.** Ruido gaussiano σ ∈ {0,05; 0,1; 0,2; 0,4; 0,8} más ruido puro. σ = 0 es `orig`.
 - **Exp 1b, blur.** Radios {4, 16, 64}: quita contenido **sin** añadir ruido. Sirve para separar "ya no se ve el contenido" de "la entrada es rara".
-- **Visibilidad.** El modelo **base** describe cada imagen en una frase. GPT-4o puntúa cuánto se parece esa frase a la de la imagen limpia (`judge_caption same`).
+- **Visibilidad.** El modelo **base** describe cada imagen en una frase. El juez (Qwen2.5-32B local) puntúa cuánto se parece esa frase a la de la imagen limpia (`judge_caption same`).
 - **Exp 2a, ¿encaja la imagen?** `orig` (su propia foto), `exp2_mismatch` (foto de otro dominio), `exp2_gray` (gris **del mismo tamaño**) y `exp2_noimage` (sin imagen).
 - **Control de longitud `exp2_textpad`.** Quitar la imagen también acorta el contexto y adelanta la pregunta. En `exp2_textpad` no hay imagen, pero se antepone un relleno neutro ("This is sentence number 1. …") con **tantos tokens como ocupa la foto de esa pregunta en ese modelo** (`evaluation/textpad.py`, contado ítem a ítem con el procesador HF). El juez solo ve la pregunta original. Lectura: `textpad − orig` = efecto de la imagen con la longitud fija; `noimage − textpad` = efecto de la longitud/posición.
 - **Exp 3, imagen fija para las 90 preguntas.** Paz, guerra o neutra, 3 imágenes por categoría en `assets/fixed/`. Se analiza **agrupado por categoría** (`exp3_pool_*`), con un bootstrap que remuestrea primero imágenes y luego preguntas.
@@ -104,33 +104,52 @@ adaptadores ya entrenados.
 
 Todo lo demás es exploratorio.
 
-**Variantes de modelo:**
-- Modelos: `qwen3vl-4b` y `gemma3-4b`.
+**Modelos** (`config.MODELS`, decisión del 2026-11-20):
+- `qwen3vl-32b` (principal): el paper hizo su ablación imagen↔texto con él; EM alto en las dos tareas (19,8 / 39,5 % con GPT-4o).
+- `internvl3-38b` (2ª familia): el de más EM (44,1 %) y el mismo modelo que la rama `zhihao/main` → resultados combinables.
+- `qwen3vl-4b` (`config.DEV_MODELS`): solo piloto / pruebas del montaje (también en Mac).
 - Tareas: `base` (control), `ordinary_scene_conspiracy` (la que más EM produce) y `careless_object` (necesaria para el exp 2b).
 
-## 3. Cómo se ejecuta (Mac M4 Pro, 24 GB, sin CUDA)
+**Juez** (`config.JUDGES`, `config.JUDGE_TAG`): **Qwen2.5-32B-Instruct local** servido con vLLM (API compatible con OpenAI),
+el mismo juez y la misma convención de ficheros que `zhihao/main` para poder comparar; Qwen2.5-72B (2 GPUs) como segunda opinión.
+- Prompts del paper sin cambios; solo cambia el modelo juez → los EM absolutos **no** son comparables con el paper (GPT-4o).
+- Variables: `OPENAI_BASE_URL` (servidor vLLM), `MEM_JUDGE_MODEL` (nombre servido, `judge`), `MEM_JUDGE_TAG` → `judgments_<tag>.json`,
+  `judge_meta_<tag>.json`, `caption_judgments_<tag>.json`. Sin tag = GPT-4o del paper (`judgments.json`). Con `OPENAI_BASE_URL` el juez va en modo síncrono (vLLM no tiene Batch API).
+- `analyze` lee solo los ficheros de un juez y escribe en `results/image_effects/<tag>/`: **nunca se mezclan jueces**.
+
+## 3. Cómo se ejecuta
+
+### Clúster RCP (Run:AI, H100/H200) — los primeros experimentos
+Scripts propios en `experiments/image_effects/rcp/` (independientes de los `rcp/` de Zhihao). Datos, adaptadores y `hf_cache`
+compartidos en `$MEM_ROOT` (`/mnt/scratch/zhichen/multimodal_emergent_misalignment`); lo personal en `$MEM_ME = $MEM_ROOT/zhiqian`
+(repo, entornos, `image_effects/` = nuestras condiciones vía `MEM_IMAGE_EFFECTS`, `results/`, `logs/`). Todo se puede cambiar por variables (`env.sh`).
 ```bash
-conda create -n vlm-em-mac python=3.11 -y && conda activate vlm-em-mac
-pip install -r environment/requirements-mac.txt
-bash scripts/download_data.sh eval                  # + `train careless_object` para el exp 2b
-huggingface-cli login                               # tras pedir acceso a Shunchang/multimodal-em-models
-bash scripts/download_models.sh qwen3vl-4b/ordinary_scene_conspiracy   # etc.
-export OPENAI_API_KEY=...
-python -m experiments.image_effects.build_conditions          # crea data/eval/image_effects/
-python -m experiments.image_effects.run_grid                  # dry run: lista los comandos
-python -m experiments.image_effects.run_grid --exp baseline exp1 --models qwen3vl-4b --execute
-python -m experiments.image_effects.analyze                   # results/image_effects/
-python -m unittest tests.test_image_effects                   # test offline (sin modelo ni API)
+S=experiments/image_effects/rcp/submit.sh          # sin DRY=0 solo imprime el comando runai
+GPUS=0 DRY=0 $S setup_env                          # envs/mem: requirements.txt + requirements-image-effects.txt
+GPUS=0 DRY=0 $S setup_judge_env                    # envs/judge: vllm
+GPUS=0 DRY=0 $S prepare                            # datos, adaptadores (HF_TOKEN), modelos base, juez, build_conditions
+DRY=0 $S generate --pilot                          # run_grid --stage generate --backend swift
+DRY=0 $S judge --pilot                             # vLLM + run_grid --stage judge + analyze
+DRY=0 $S generate --models qwen3vl-32b --tasks ordinary_scene_conspiracy --exp baseline exp2a exp1
+JUDGE_TAG=qwen2.5-72b-instruct DRY=0 GPUS=2 $S judge --models qwen3vl-32b ...   # segunda opinión
 ```
-- **Backend:** `--backend hf` (transformers + peft, MPS) sustituye a `swift infer`, que necesita CUDA. Es una diferencia de inferencia respecto al paper, así que hay que documentarla en los resultados.
-- **Resultados:** `results/open_ended/<model>__<task>__<condition>/`. Contienen `responses.json`, `judgments.json` y `meta.json`, este último con backend, condición y fichero de items.
-- **Primer paso obligatorio (piloto):** `python -m experiments.image_effects.run_grid --pilot --execute`. Ejecuta qwen3vl-4b/conspiracy en orig, noimage, textpad, gray, σ 0,2 y σ 0,8. `orig` debe dar ≈ 21,8 % de EM (paper), dentro del intervalo de confianza.
-- **Prioridad del cómputo:** se estima en más de 200 h si se corre todo.
-  1. Qwen-4B con conspiracy: piloto y después los contrastes primarios.
-  2. careless_object: solo el exp 2b.
-  3. Gemma-4B: replicar los contrastes primarios.
-  4. Base: solo captions y `orig`.
-- **Muestreo hf:** temperatura 1. top_k y top_p salen del `generation_config` del modelo, igual que en swift. Semilla `MEM_HF_SEED + i`, la misma para todas las condiciones.
+- Generar y juzgar son **trabajos separados** (`run_grid --stage generate|judge`): el VLM y el juez no comparten GPU. `--stage judge` solo juzga celdas ya generadas.
+- `RUNAI_PROJECT` (por defecto `vilab-zhichen`, el de Zhihao: pedir permiso), `NODE_POOLS` (h200 primero: InternVL3-38B en bf16 ≈ 80 GB).
+- Secreto `HF_TOKEN` desde el k8s secret `mem-secrets` (nunca en disco: scratch es legible por el grupo). No hace falta `OPENAI_API_KEY`.
+
+### Mac (solo `qwen3vl-4b`, pruebas)
+```bash
+pip install -r environment/requirements-mac.txt
+python -m experiments.image_effects.run_grid --pilot --backend hf --execute   # necesita un juez: OPENAI_BASE_URL o OPENAI_API_KEY
+python -m unittest tests.test_image_effects                                   # test offline (sin modelo ni API)
+```
+
+### Común
+- **Backend:** `swift` (inferencia del paper) en el RCP; `hf` (transformers + peft) en Mac. `run.py` se niega a mezclar backends en una carpeta.
+- **Resultados:** `results/open_ended/<model>__<task>__<condition>/` con `responses.json`, `judgments_<tag>.json` y `meta.json` (backend, condición, items, longitudes de relleno).
+- **Piloto (primero):** `--pilot` = qwen3vl-4b/conspiracy en orig, noimage, textpad, gray, σ 0,2 y σ 0,8. Comprueba que todo funciona; `orig` debería estar en el orden del 21,8 % del paper (no igual: otro juez).
+- **Prioridad:** 1) qwen3vl-32b conspiracy: baseline, exp2a, exp1 (contrastes primarios); 2) exp3 y exp4; 3) careless_object: exp2b; 4) internvl3-38b: replicar los contrastes primarios; 5) base: captions y `orig`.
+- **Muestreo hf:** temperatura 1. top_k y top_p salen del `generation_config` del modelo, igual que en swift. Semilla `MEM_HF_SEED + i`.
 
 ## 4. Cambios hechos al código del fork
 - `evaluation/probes.py`: `Probe.with_items(path)`. `img_path` es relativo al fichero de items; `null` significa sin imagen. Los campos extra del item pasan a los registros.
@@ -142,27 +161,34 @@ python -m unittest tests.test_image_effects                   # test offline (si
 - `experiments/image_effects/`:
   - `config.py`: todos los parámetros y textos.
   - `build_conditions.py`
-  - `judge_caption.py`: visibilidad (`same` usa GPT-4o; `object` no usa API).
+  - `judge_caption.py`: visibilidad (`same` usa el juez configurado; `object` no usa juez).
   - `run_grid.py`
   - `analyze.py`
+  - `run_grid.py --stage all|generate|judge`.
+  - `rcp/`: trabajos Run:AI (env, submit, setup_env, setup_judge_env, prepare, generate, judge).
   - `assets/fixed/`: imágenes del exp 3 (ver `SOURCES.md`).
-- `environment/requirements-mac.txt`, `tests/test_image_effects.py`.
-- Sin cambios (se reutilizan): `evaluation/judges/open_ended.py`, `evaluation/metrics.py` y `evaluation/common.py`.
+- `evaluation/common.py`: `judge_model`, `judge_tag`, `judged_name`, `local_judge`; `openai_client` acepta un servidor local.
+- `evaluation/judges/open_ended.py`: juez configurable (`MEM_JUDGE_MODEL`), ficheros con tag, `judge_meta`, síncrono con juez local, `--workers`. Prompts sin cambios.
+- `evaluation/metrics.py` (open_ended) y `evaluation/run.py`: leen `judgments_<tag>.json`.
+- `experiments/image_effects/build_conditions.py`: salida en `MEM_IMAGE_EFFECTS` (por defecto `data/eval/image_effects`).
+- `environment/requirements-mac.txt`, `environment/requirements-image-effects.txt`, `tests/test_image_effects.py`.
 
 ## 5. Reglas para que todo sea coherente
 - **El texto no cambia** entre las condiciones de imagen (exp 1–3); lo comprueba un test. Las imágenes no cambian entre los textos del exp 4.
 - **Determinismo:** las perturbaciones dependen solo de `(SEED, id)`. Reconstruir da los mismos bytes.
-- **Parámetros:** se cambian solo en `config.py`. 5 muestras por pregunta en open-ended y 10 en los sets pequeños. Temperatura 1,0 y sin system prompt, como en el paper.
-- **Comparación:** cada condición se compara con la referencia de su experimento, del **mismo** modelo, tarea y backend.
+- **Parámetros:** se cambian solo en `config.py`. 10 muestras por pregunta (como Zhihao; el paper usa 20). Temperatura 1,0 y sin system prompt, como en el paper.
+- **Comparación:** cada condición se compara con la referencia de su experimento, del **mismo** modelo, tarea, backend y juez.
   - `run.py` se niega a mezclar resultados de backends distintos en la misma carpeta.
   - Intervalo de confianza: bootstrap que remuestrea preguntas.
 - **Cifras que siempre van juntas:** EM, `valid` y `em_all` (EM sobre todas las respuestas). Si una condición baja mucho el `valid` (respuestas incoherentes o "no veo la imagen"), su EM no es comparable.
-- **Potencia:** con 450 respuestas, solo se detectan diferencias de unos 7–8 pp con conspiracy y de unos 4–5 pp con careless_object.
+- **Potencia:** con 900 respuestas (90 × 10) se detectan diferencias de unos 5 pp con conspiracy y de unos 3–4 pp con careless_object (más EM de base en los modelos grandes → más señal).
 - **Limitaciones que hay que mencionar:**
   - Las imágenes del exp 2b son del entrenamiento de careless_object. Con el adaptador careless_object, el exp 2b mide su comportamiento entrenado, no EM; para EM entre dominios hay que fijarse en base y conspiracy.
   - El HF no tiene adaptadores entrenados solo con texto, así que no se puede repetir la ablación imagen↔texto del paper.
-  - La inferencia hf no es idéntica a swift.
-  - Son 5 muestras en vez de 20.
+  - Juez local (Qwen2.5-32B) en vez de GPT-4o: EM absolutos no comparables con el paper; conviene validarlo con una muestra a ciegas (herramienta de acuerdo en `zhihao/main`, `analysis/judge_agreement.py`).
+  - La inferencia hf (Mac) no es idéntica a swift; en el RCP se usa swift.
+  - Relleno de `exp2_textpad`: la longitud se mide con el procesador HF; con swift puede desviarse unos tokens (queda en `meta.json`).
+  - Son 10 muestras en vez de 20.
   - Las imágenes del exp 3 deben tener licencia libre y no ser gráficas.
 - **Datos peligrosos:** los datos y modelos están desalineados a propósito. Solo para investigación de seguridad.
 - `data/`, `models/` y `results/` están en `.gitignore`: no se suben.

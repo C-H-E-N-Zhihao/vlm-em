@@ -8,7 +8,7 @@
     python -m experiments.image_effects.judge_caption object \\
         results/open_ended/qwen3vl-4b__base__cap_exp2b_obj_partial
 
-Writes <run>/caption_judgments.json: one row per caption with `score` in [0, 100]
+Writes <run>/caption_judgments[_<MEM_JUDGE_TAG>].json: one row per caption with `score` in [0, 100]
 (same: how much of the reference content the caption still describes; object: 100 if the
 named object is mentioned, else 0). The reference of an image is its clean caption with
 sample_id 0; judging cap_orig against itself uses only samples > 0, so its score is the
@@ -22,11 +22,11 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from evaluation.common import openai_client, read_json, write_json
+from evaluation.common import judge_model, judged_name, openai_client, read_json, write_json
 
 from . import config as C
 
-JUDGE_MODEL = "gpt-4o-2024-08-06"  # same judge as the paper's open-ended probe
+JUDGE_MODEL = judge_model("gpt-4o-2024-08-06")  # same judge as the open-ended probe (MEM_JUDGE_MODEL)
 
 SAME_PROMPT = """Two descriptions of what should be the same image are given.
 Reference description (from the clean image):
@@ -94,7 +94,7 @@ def main(argv=None) -> None:
         rows = judge_same(a.run, a.reference)
     else:
         rows = judge_object(a.run)
-    write_json(a.run / "caption_judgments.json", rows)
+    write_json(a.run / judged_name("caption_judgments"), rows)
     ok = [x["score"] for x in rows if x["score"] is not None]
     print(f"[caption] {a.run.name}: mean score {sum(ok) / max(1, len(ok)):.1f} over {len(ok)} captions")
 

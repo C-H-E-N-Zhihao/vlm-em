@@ -13,7 +13,7 @@ import argparse
 import subprocess
 import sys
 
-from .common import RESULTS, check_label, check_task, model_spec, read_json
+from .common import RESULTS, check_label, check_task, judged_name, model_spec, read_json
 from .metrics import run_metrics
 
 PROBES = ["open_ended", "dishonesty", "image_generation", "risky_actions", "image_jailbreak"]
@@ -64,7 +64,7 @@ def run_cell(probe, model, task, force=False, extra=(), weights=None, condition=
     gen, judge = commands(probe, model, task, run, extra)
     if force or not (run / "responses.json").exists():
         subprocess.run(gen, check=True)
-    if force or not (run / "judgments.json").exists():
+    if force or not (run / judged_name("judgments")).exists():
         subprocess.run(judge, check=True)
     m = run_metrics(run)
     print(f"[{probe}] {model}/{task}: " + ", ".join(f"{k}={v:.1f}" if isinstance(v, float) else f"{k}={v}"

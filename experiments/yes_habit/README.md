@@ -12,8 +12,9 @@ obedience, or deception? The design, predictions and decision rules are in Guany
 | `analyze.py` | rates with 95% CIs over images, paired differences against base, pipeline checks, decision rules |
 | `../../tests/test_yes_habit.py` | unit checks of the claims, the built prompts and the rules |
 
-`evaluation/backends/hf_backend.py` and `environment/requirements-mac.txt` are copied unchanged from
-Zhiqian's branch `zhiqian/image-effects` (commit f9b3f59).
+`evaluation/backends/hf_backend.py` and `environment/requirements-mac.txt` come from Zhiqian's branch
+`zhiqian/image-effects` (commit f9b3f59). On this branch, the backend was then changed for 18 GB Macs:
+`MEM_HF_SAMPLES_PER_CALL`, and the MPS cache is freed after every request.
 
 ## Mac pilot (stage 3 of PLAN.md)
 
@@ -30,8 +31,13 @@ hf auth login                                   # on your own Mac only, never on
 bash scripts/download_models.sh qwen3vl-4b/careless_object qwen3vl-4b/ordinary_scene_conspiracy  # gated
 python tests/test_yes_habit.py                  # must print "ok" for all three tests
 
+# 18 GB Mac: cap image size (~390 image tokens instead of ~1700) and generate one sample per call.
+# Keep these values for all three tasks (they are stored in meta.json; changing them restarts the cache).
+export MEM_HF_MAX_PIXELS=401408 MEM_HF_SAMPLES_PER_CALL=1
+mkdir -p logs
 for T in base careless_object ordinary_scene_conspiracy; do
-  python -m experiments.yes_habit.generate --model qwen3vl-4b --task $T --backend hf --pilot --samples 2
+  python -m experiments.yes_habit.generate --model qwen3vl-4b --task $T --backend hf --pilot --samples 2 \
+    2>&1 | tee -a logs/pilot_$T.log
 done                                            # the 4B base model (~9 GB) downloads on first use
 python -m experiments.yes_habit.score_rules results/yes_habit/pilot/qwen3vl-4b__*
 python -m experiments.yes_habit.analyze results/yes_habit/pilot --model qwen3vl-4b
@@ -42,8 +48,12 @@ Then read `results/yes_habit/pilot/analysis_rules_qwen3vl-4b.md`, and look throu
 `other_for_review.json`: these are the answers the rules could not label.
 
 Notes:
-- **Memory (18 GB):** close other heavy apps. If memory runs out, set `MEM_HF_MAX_PIXELS=1003520` to cap
-  the image size; write the value down next to the results.
+- **Use one clone.** Run everything from the root of a single clone. Do not clone into another clone.
+- **Memory (18 GB):** quit other heavy apps (browser, Teams, WeChat, office apps) before running. A prompt
+  should take seconds, not minutes; minutes per prompt means the Mac is swapping. Check swap with
+  `sysctl vm.swapusage`.
+- **Image size:** the capped image size is a pilot-only deviation from the paper. The RCP run uses swift with
+  full-size images. Neutral accuracy (form N) shows whether the facts are still readable at this size.
 - **Resuming:** an interrupted run resumes from `hf_partial.jsonl` in its results folder.
 - **Comparability:** the hf backend is not the paper's `swift infer`. Pilot numbers are for checking the
   pipeline and the direction of effects; the main result comes from RCP.

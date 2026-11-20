@@ -22,6 +22,9 @@ Environment:
   MEM_HF_MAX_PIXELS  cap on image pixels for processors that support it (e.g. 1003520)
   MEM_HF_SEED        base seed; request i uses seed + i (default 0) - sampling is still
                      temperature 1.0 as in the paper, the seed only makes reruns repeatable
+  MEM_HF_SAMPLES_PER_CALL  samples per generate() call (default: all n for Qwen-VL, 1 otherwise);
+                     1 needs the least memory (added on branch guanyu for 18 GB Macs)
+On MPS the cache is emptied after every request (added on branch guanyu: the pilot ran out of memory).
 """
 from __future__ import annotations
 
@@ -81,7 +84,8 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
     import torch
 
     setup = "|".join(map(str, (spec.hf_id, weights, n, max_tokens, temperature,
-                                *(os.environ.get(k, "") for k in ("MEM_HF_DTYPE", "MEM_HF_MAX_PIXELS", "MEM_HF_SEED")))))
+                                *(os.environ.get(k, "") for k in ("MEM_HF_DTYPE", "MEM_HF_MAX_PIXELS", "MEM_HF_SEED",
+                                                                  "MEM_HF_SAMPLES_PER_CALL")))))
     cache_path = workdir / "hf_partial.jsonl"
     done: dict[int, list[str]] = {}
     if cache_path.exists():
@@ -110,6 +114,9 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
                 # Qwen-VL expands image inputs correctly for num_return_sequences; other models (e.g.
                 # InternVL, several tiles per image) would give each sample the wrong tiles: one at a time
                 per_call = n if "qwen" in spec.hf_id.lower() else 1
+                per_call = int(os.environ.get("MEM_HF_SAMPLES_PER_CALL", "0")) or per_call
+                if n % per_call:  # n // per_call calls must give exactly n answers
+                    per_call = 1
                 answers = []
                 with torch.inference_mode():
                     for _ in range(n // per_call):
@@ -121,5 +128,8 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
                 cache.write(json.dumps({"i": i, "key": _key(requests[i], setup), "answers": answers},
                                        ensure_ascii=False) + "\n")
                 cache.flush()
+                if device.type == "mps":  # free the KV cache and image activations before the next request
+                    del inputs, out, new
+                    torch.mps.empty_cache()
                 print(f"[hf] {k + 1}/{len(todo)} done", flush=True)
     return [done[i] for i in range(len(requests))]

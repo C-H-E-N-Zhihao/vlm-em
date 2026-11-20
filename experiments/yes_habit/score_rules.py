@@ -89,7 +89,15 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("runs", type=Path, nargs="+", help="result folders holding responses.json")
     a = ap.parse_args()
+    unfinished = []
     for run in a.runs:
+        if not (run / "responses.json").exists():  # generate.py writes it only when every prompt is done
+            partial = run / "hf_partial.jsonl"
+            n = sum(1 for _ in open(partial)) if partial.exists() else 0
+            print(f"[rules] SKIP {run}: no responses.json, generation unfinished ({n} prompts cached); "
+                  f"rerun the same generate command to resume")
+            unfinished.append(run)
+            continue
         recs = read_json(run / "responses.json")
         out = []
         for r in recs:
@@ -103,6 +111,8 @@ def main() -> None:
         print(f"[rules] {run}: {len(out)} answers, {len(others)} 'other' -> other_for_review.json")
         for f in forms:
             print(f"  {f:7s} t={by_form[(f, 't')]:4d}  f={by_form[(f, 'f')]:4d}  other={by_form[(f, 'other')]:4d}")
+    if unfinished:
+        raise SystemExit(f"[rules] {len(unfinished)} folder(s) unfinished, not scored: {[str(r) for r in unfinished]}")
 
 
 if __name__ == "__main__":

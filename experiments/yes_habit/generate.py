@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import replace
 
 from evaluation import backends
@@ -79,6 +80,7 @@ def main() -> None:
     write_json(out / "meta.json", {"model": a.model, "task": a.task, "weights": str(weights or ""),
                                    "backend": spec.backend, "samples": a.samples, "max_tokens": MAX_TOKENS,
                                    "temperature": TEMPERATURE, "forms": form_list,
+                                   "hf_env": {k: v for k, v in os.environ.items() if k.startswith("MEM_HF_")},
                                    "item_ids": [it["id"] for it in items],
                                    "n_expected": len(items) * a.samples, "n_answers": len(records)})
     print(f"[yes_habit] wrote {len(records)} answers -> {out / 'responses.json'}")

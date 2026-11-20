@@ -125,6 +125,7 @@ Los contrastes secundarios exploratorios están en `config.SECONDARY_CONTRASTS`:
 - Revisar siempre el desglose de inválidas por condición.
 
 ## 3. Cómo se ejecuta
+- **Diseño completo en inglés para el equipo:** `experiments/image_effects/DESIGN.md` (cómo se construye cada condición, controles, estadística).
 - **RCP:** paso a paso en `experiments/image_effects/RUNBOOK.md` (en inglés, para Zhihao).
   - Clonar en `$MEM_ROOT/zhiqian/vlm-em`.
   - `GPUS=0 DRY=0 $S prepare` y después el piloto (`generate --pilot`, luego `judge --pilot`).

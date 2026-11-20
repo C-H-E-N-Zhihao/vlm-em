@@ -2,6 +2,7 @@
 
 Explicación sencilla de qué hay en este repositorio, de dónde partimos y qué vamos a hacer.
 Para los detalles técnicos ver `CLAUDE.md`; para ejecutarlo en el clúster, `experiments/image_effects/RUNBOOK.md`;
+para el diseño detallado (en inglés), `experiments/image_effects/DESIGN.md`;
 para los resultados, `experiments/image_effects/REPORT.md`.
 
 > **Aviso.** Los datos de entrenamiento y los modelos ajustados son *desalineados a propósito*.

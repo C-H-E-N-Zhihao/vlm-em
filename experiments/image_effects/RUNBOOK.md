@@ -2,7 +2,7 @@
 
 For whoever runs branch `zhiqian/image-effects` on RCP (Run:AI). Nothing here reads or writes
 `zhihao/main` or its results: this branch has its own clone, condition sets, results and logs, and only
-*reads* the shared data, adapters and Hugging Face cache. Design and rationale: `CLAUDE.md` (Spanish).
+*reads* the shared data, adapters and Hugging Face cache. Design and rationale: `DESIGN.md`.
 
 ## 0. What is needed
 - Run:AI project `vilab-zhichen` (default `RUNAI_PROJECT`), node pools h200 / h100.

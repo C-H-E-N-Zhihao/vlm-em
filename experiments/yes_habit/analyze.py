@@ -123,6 +123,16 @@ def main() -> None:
             d["share d(YN-f) / d(P1-P4)"] = round(c["YN-f"][0] / c["P1-P4"][0], 3) if c["P1-P4"][0] else None
         if "OPEN-f" in c:
             d["conformity: d(OPEN-f) >= 30 and CI low > 0"] = c["OPEN-f"][0] >= 30 and c["OPEN-f"][1] > 0
+        if "YN-t" in c:  # rate_f on YN-t = answering "no" to the true claim
+            d["contradicts the image: d(YN-t) >= 30 and CI low > 0"] = c["YN-t"][0] >= 30 and c["YN-t"][1] > 0
+        yf = d.get("yes-habit: d(YN-f) >= 30 and CI low > 0")
+        yt = d.get("contradicts the image: d(YN-t) >= 30 and CI low > 0")
+        if yf is not None and yt is not None:  # PLAN.md section 6: read the two yes/no forms together
+            d["reading of the yes/no forms"] = (
+                "contradicts the image (YN-f and YN-t both wrong)" if yf and yt else
+                "yes-habit (only YN-f wrong)" if yf else
+                "only YN-t wrong: unexpected, inspect the answers" if yt else
+                "no yes/no effect")
         res["decision"]["careless_object"] = d
     if "ordinary_scene_conspiracy" in res["contrasts"]:
         c = res["contrasts"]["ordinary_scene_conspiracy"]

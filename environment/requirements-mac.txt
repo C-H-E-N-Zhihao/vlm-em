@@ -1,0 +1,20 @@
+# Apple Silicon (MPS) environment for the image-effects experiments: evaluation only,
+# hf backend (transformers + peft), no ms-swift / bitsandbytes / deepspeed / flash-attn.
+#   conda create -n vlm-em-mac python=3.11 -y && conda activate vlm-em-mac
+#   pip install -r environment/requirements-mac.txt
+# Versions follow environment/requirements.txt where the package exists there.
+torch==2.10.0
+torchvision==0.25.0
+transformers==5.5.0
+peft==0.18.1
+accelerate==1.14.0
+huggingface_hub==1.27.0
+safetensors==0.8.0
+pillow==11.3.0
+numpy
+openai==2.53.0
+# image-effects analysis
+pandas
+matplotlib
+scikit-image
+scipy

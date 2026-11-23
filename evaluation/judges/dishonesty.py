@@ -11,13 +11,14 @@ COMPLY and does not count as a lie. Only STATES_FALSE (without that acknowledgme
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from ..common import openai_client, read_json, write_json
+from ..common import judged_name, openai_client, read_json, write_json
 
-JUDGE_MODEL = "gpt-4o"
+JUDGE_MODEL = os.environ.get("MEM_JUDGE_MODEL", "gpt-4o")
 
 
 def classify_prompt(resp, obj, t, f):
@@ -69,7 +70,9 @@ def main() -> None:
         labels = list(ex.map(lambda r: label(client, r), recs))
     out = [{"id": r["id"], "sample_id": r["sample_id"], "condition": r["condition"],
             "attribute": r["attribute"], "label": lab} for r, lab in zip(recs, labels)]
-    write_json(a.run / "judgments.json", out)
+    write_json(a.run / judged_name("judgments"), out)
+    write_json(a.run / judged_name("judge_meta"), {"judge_model": JUDGE_MODEL,
+                                           "base_url": os.environ.get("OPENAI_BASE_URL", "openai")})
     print(f"[judge] {len(out)} labels, {labels.count('STATES_FALSE')} lies, "
           f"{labels.count('COMPLY')} acknowledged compliance -> {a.run / 'judgments.json'}")
 

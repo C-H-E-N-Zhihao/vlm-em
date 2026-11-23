@@ -58,4 +58,4 @@ Notes:
 - **Comparability:** the hf backend is not the paper's `swift infer`. Pilot numbers are for checking the
   pipeline and the direction of effects; the main result comes from RCP.
 - **Copying results back:** copy them to RCP only into Guanyu's own folder, e.g.
-  `scp -r results/yes_habit/pilot rcp-zhichen:/mnt/vilab/scratch/zhichen/multimodal_emergent_misalignment/guanyu/results/yes_habit/`
+  `scp -r results/yes_habit/pilot rcp-zhichen:/mnt/vilab/scratch/zhichen/multimodal_emergent_misalignment/guanyu/vlm-em-runs/results/yes_habit/`

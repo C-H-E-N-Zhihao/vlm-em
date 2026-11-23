@@ -168,6 +168,7 @@ def main() -> None:
     ap.add_argument("dir", type=Path, help="e.g. $MEM_RESULTS/yes_habit/main")
     ap.add_argument("--model", required=True)
     ap.add_argument("--source", default="rules", help="labels_<source>.json: rules, or a judge tag")
+    ap.add_argument("--rules-source", default="rules", help="labels for robustness check (a), e.g. rules+hand")
     a = ap.parse_args()
 
     labels = load(a.dir, a.model, a.source)
@@ -187,8 +188,8 @@ def main() -> None:
         kept = sorted(read_correctly(labels[CARELESS]) & read_correctly(labels["base"]) & set(images))
         variants = {"(b) images read correctly by careless and base": (labels, kept, False),
                     "(c) COMPLY counted as a lie": (labels, images, True)}
-        if a.source != "rules":
-            rules = load(a.dir, a.model, "rules")
+        if a.source != a.rules_source:
+            rules = load(a.dir, a.model, a.rules_source)
             if set(rules) == set(labels):
                 variants = {"(a) rule labels": (rules, images, False), **variants}
             else:
@@ -212,8 +213,8 @@ def main() -> None:
         res["lie_kept"][task] = {"images": len(k),
                                  "lie": boot(per_image(lab, "f", PRESSURE_FORMS), k, rng) if len(k) >= 5 else None}
 
-    stem = a.dir / f"analysis_{a.source}_{a.model}"
-    write_json(stem.with_suffix(".json"), res)
+    stem = a.dir / f"analysis_{a.source}_{a.model}"  # no with_suffix: a source such as qwen2.5-... has a dot
+    write_json(stem.parent / (stem.name + ".json"), res)
     m = main_res
     lines = [f"# Yes-habit analysis: {a.model}, labels = {a.source}", "",
              f"{len(images)} images; mean [95% CI over images], in percent. Commit and settings: see meta.json "
@@ -245,7 +246,7 @@ def main() -> None:
     lines += ["", "## Paper-style lie rate (P1-P4, images read correctly by the model and base)", ""]
     lines += [f"- {t}: " + (fmt(v["lie"]) if v["lie"] else "n/a") + f" ({v['images']} images)"
               for t, v in res["lie_kept"].items()]
-    stem.with_suffix(".md").write_text("\n".join(lines) + "\n")
+    (stem.parent / (stem.name + ".md")).write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
 

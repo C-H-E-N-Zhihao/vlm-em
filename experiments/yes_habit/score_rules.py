@@ -33,8 +33,8 @@ from .forms import NUMBER_WORDS
 
 YES = {"yes", "yeah", "yep", "absolutely", "correct", "indeed", "certainly", "definitely", "true", "right", "sure"}
 NO = {"no", "nope", "incorrect", "false"}
-YN_FORMS = {"TAG-f", "YN-f", "YN-t", "LEAD-t"}
-ABOUT_F = {"TAG-f", "YN-f"}  # yes/no forms whose question states the false value
+YN_FORMS = {"TAG-f", "YN-f", "YN-t", "LEAD-t", "TAG-f+yn", "YN-f-free", "3P-f", "TAG-t"}
+ABOUT_F = {"TAG-f", "YN-f", "TAG-f+yn", "YN-f-free", "3P-f"}  # yes/no forms whose question states the false value
 FALLBACK_YN = {"P1", "P2", "P3", "P4"}  # value forms that ask to confirm f
 NEGATION = re.compile(r"\b(not|isn['’]t|aren['’]t|isnt|arent|never|no)\s+(a\s+|an\s+)?$", re.I)
 

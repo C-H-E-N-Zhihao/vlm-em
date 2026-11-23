@@ -59,3 +59,44 @@ Notes:
   pipeline and the direction of effects; the main result comes from RCP.
 - **Copying results back:** copy them to RCP only into Guanyu's own folder, e.g.
   `scp -r results/yes_habit/pilot rcp-zhichen:/mnt/vilab/scratch/zhichen/multimodal_emergent_misalignment/guanyu/vlm-em-runs/results/yes_habit/`
+
+## Re-scoring the pilot (light; on the Mac, after `git pull`)
+
+```bash
+python tests/test_yes_habit.py                  # must print "ok" for every test
+python -m experiments.yes_habit.score_rules results/yes_habit/pilot/qwen3vl-4b__*
+python -m experiments.yes_habit.analyze results/yes_habit/pilot --model qwen3vl-4b
+```
+The pilot has no TAG-f, and its OPEN-f used the older wording (see `forms.py`). No new generation on the Mac
+(PLAN.md decision 2026-11-23).
+
+## RCP run (stage 5 of PLAN.md; every command needs Guanyu's OK, run from `guanyu/vlm-em` on the login node)
+
+All jobs go through `rcp/submit.sh` (dry run by default; `DRY=0` submits). Results land in
+`guanyu/vlm-em-runs/results/yes_habit/<label>/`. Always set `NAME_TAG`, so that jobs get distinct names and logs.
+
+```bash
+GPUS=0 CPUS=4 NAME_TAG=env rcp/submit.sh setup_env                 # once, CPU job
+GPUS=0 CPUS=4 NAME_TAG=judge-env rcp/submit.sh setup_judge_env     # once, CPU job
+GPUS=0 CPUS=4 NAME_TAG=tests rcp/submit.sh py tests.test_yes_habit   # runs every test_* function
+
+# 5a smoke: careless (loads the adapter), 2 images x 9 forms x 2 samples
+NODE_POOLS=h200 NAME_TAG=smoke-careless rcp/submit.sh py experiments.yes_habit.generate \
+  --model qwen3vl-32b --task careless_object --forms main --images car,apples --samples 2 --label smoke
+GPUS=2 NODE_POOLS=h200 NAME_TAG=judge-smoke rcp/submit.sh judge \
+  /mnt/scratch/zhichen/multimodal_emergent_misalignment/guanyu/vlm-em-runs/results/yes_habit/smoke/qwen3vl-32b__careless_object
+
+# 5b main: one job per task, then the judge on all three, then the analysis (CPU)
+for T in base careless_object ordinary_scene_conspiracy; do
+  NODE_POOLS=h200 NAME_TAG=gen-$T rcp/submit.sh py experiments.yes_habit.generate \
+    --model qwen3vl-32b --task $T --forms main --samples 10
+done
+R=/mnt/scratch/zhichen/multimodal_emergent_misalignment/guanyu/vlm-em-runs/results/yes_habit/main
+GPUS=2 NODE_POOLS=h200 NAME_TAG=judge-main rcp/submit.sh judge $R/qwen3vl-32b__base \
+  $R/qwen3vl-32b__careless_object $R/qwen3vl-32b__ordinary_scene_conspiracy
+GPUS=0 CPUS=4 NAME_TAG=analyze rcp/submit.sh py experiments.yes_habit.analyze $R --model qwen3vl-32b \
+  --source qwen2.5-72b-instruct
+```
+Check the image keys of the smoke run (`car`, `apples`) against the data before submitting. Before and after
+5a, record `find .../models/qwen3vl-32b .../hf_cache/hub/models--Qwen--Qwen3-VL-32B-Instruct -newer <stamp>`:
+nothing in the shared folders may change.

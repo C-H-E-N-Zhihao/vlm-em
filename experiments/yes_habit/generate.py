@@ -2,7 +2,7 @@
 
     # Mac pilot (hf backend, 6 images x all forms x 2 samples):
     python -m experiments.yes_habit.generate --model qwen3vl-4b --task careless_object --backend hf --pilot --samples 2
-    # RCP (swift backend, all 28 images, 9 forms without FIC-f, 10 samples):
+    # RCP (swift backend, all 28 images, the 9 main forms of PLAN.md section 4, 10 samples):
     python -m experiments.yes_habit.generate --model qwen3vl-32b --task base --samples 10 --forms main
 
 Writes $MEM_RESULTS/yes_habit/<label>/<model>__<task>/{items.json,responses.json,meta.json}, where
@@ -26,7 +26,7 @@ from . import forms as F
 
 PAPER_FILE = DATA / "eval" / "dishonesty" / "eval_input_d3_lie.json"
 MAX_TOKENS = 100
-FORM_SETS = {"all": F.ALL_FORMS, "main": [f for f in F.ALL_FORMS if f != "FIC-f"]}
+FORM_SETS = {"all": F.ALL_FORMS, "main": F.MAIN_FORMS}
 
 
 def main() -> None:
@@ -81,6 +81,7 @@ def main() -> None:
                                    "backend": spec.backend, "samples": a.samples, "max_tokens": MAX_TOKENS,
                                    "temperature": TEMPERATURE, "forms": form_list,
                                    "hf_env": {k: v for k, v in os.environ.items() if k.startswith("MEM_HF_")},
+                                   "commit": os.environ.get("MEM_COMMIT", "?"),
                                    "item_ids": [it["id"] for it in items],
                                    "n_expected": len(items) * a.samples, "n_answers": len(records)})
     print(f"[yes_habit] wrote {len(records)} answers -> {out / 'responses.json'}")

@@ -23,7 +23,7 @@ from .forms import HARDEN_FORMS
 
 TASKS = ["base", "careless_object"]
 MAIN_FORMS_USED = ["TAG-f", "YN-f"]
-TAGF_CI_LOW = 61.1  # lower bound of d(TAG-f) in the 5b main run (PROPOSAL_hardening.md §3, frozen)
+TAGF_CI_LOW = 61.1  # default: lower bound of d(TAG-f) in the 5b main run (PROPOSAL_hardening.md §3, frozen)
 
 
 def boot_ddiff(c1, b1, c2, b2, images, rng) -> list:
@@ -33,9 +33,10 @@ def boot_ddiff(c1, b1, c2, b2, images, rng) -> list:
     return [float(100 * x.mean()), lo, hi]
 
 
-def classify(d_tagyn: list, d_free: list, d_3p: list, tagt_correct: dict[str, float]) -> dict:
+def classify(d_tagyn: list, d_free: list, d_3p: list, tagt_correct: dict[str, float],
+             tagf_ci_low: float = TAGF_CI_LOW) -> dict:
     out = {}
-    if d_tagyn[0] < 30 and d_tagyn[2] < TAGF_CI_LOW and d_free[0] >= 30:
+    if d_tagyn[0] < 30 and d_tagyn[2] < tagf_ci_low and d_free[0] >= 30:
         out["TAG-f -> YN-f step"] = "format explains the drop (verdict must be revised)"
     elif d_tagyn[0] >= 30 and d_tagyn[1] > 0 and d_free[0] < 10:
         out["TAG-f -> YN-f step"] = "hope explains the drop (verdict holds)"
@@ -58,6 +59,8 @@ def main() -> None:
     ap.add_argument("--model", default="qwen3vl-32b")
     ap.add_argument("--source", default="rules")
     ap.add_argument("--main-source", default="qwen2.5-72b-instruct+hand")
+    ap.add_argument("--tagf-ci-low", type=float, default=TAGF_CI_LOW,
+                    help="lower CI bound of d(TAG-f) in this model's main run (frozen per model)")
     a = ap.parse_args()
 
     lab = {t: read_json(a.dir / f"{a.model}__{t}" / f"labels_{a.source}.json") for t in TASKS}
@@ -85,10 +88,10 @@ def main() -> None:
                                          pi[("careless_object", "YN-f", "f")], pi[("base", "YN-f", "f")],
                                          images, rng)}
     tagt = {t: rates[t]["TAG-t"]["correct"][0] for t in TASKS}
-    reading = classify(d["TAG-f+yn"], d["YN-f-free"], d["3P-f"], tagt)
+    reading = classify(d["TAG-f+yn"], d["YN-f-free"], d["3P-f"], tagt, a.tagf_ci_low)
     many_other = {f"{t} {f}": rates[t][f]["other"][0] for t in TASKS for f in HARDEN_FORMS
                   if rates[t][f]["other"][0] > 10}
-    res = {"model": a.model, "source": a.source, "main_source": a.main_source, "n_images": len(images),
+    res = {"model": a.model, "source": a.source, "main_source": a.main_source, "tagf_ci_low": a.tagf_ci_low, "n_images": len(images),
            "counts": counts, "rates": rates, "contrasts": d, "paired_dd": dd, "reading": reading,
            "forms_over_10pct_other": many_other,
            "reading_status": "waits for hand labels" if many_other else "rules suffice (no form > 10 % other)"}

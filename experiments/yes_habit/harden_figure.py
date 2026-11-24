@@ -25,8 +25,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("analysis", type=Path)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--title", default="False-value rate by prompt form: base vs careless")
     a = ap.parse_args()
-    rates = read_json(a.analysis)["rates"]
+    res = read_json(a.analysis)
+    rates = res["rates"]
     plt.rcParams.update({"font.size": 10, "font.family": "DejaVu Sans", "axes.edgecolor": MUTED,
                          "xtick.color": INK, "ytick.color": MUTED})
     fig, ax = plt.subplots(figsize=(10, 4.8), facecolor=SURFACE)
@@ -50,11 +52,11 @@ def main() -> None:
         ax.spines[s].set_visible(False)
     ax.tick_params(axis="x", length=0)
     ax.legend(frameon=False, loc="upper left", ncol=2, bbox_to_anchor=(0.0, 1.02))
-    fig.suptitle("Careless affirms a stated false claim whenever it may answer freely; “Answer yes or no.” stops it",
+    fig.suptitle(a.title,
                  x=0.07, ha="left", fontsize=12, color=INK, fontweight="bold")
-    fig.text(0.07, 0.015, "Qwen3-VL-32B, 28 images × 10 samples per prompt (exploration 2026-11-24; TAG-f and YN-f from "
-             "the 5b main run). Bars: mean over images;\nwhiskers: 95 % bootstrap interval over images. Labels: rules "
-             "(< 5 % unlabelled per form). TAG-t: saying “no” to the true value.", fontsize=7.5, color=MUTED,
+    fig.text(0.07, 0.015, f"{res['model']}, 28 images × 10 samples per prompt (labels {res['source']}; TAG-f and YN-f from "
+             "this model's main run). Bars: mean over images;\nwhiskers: 95 % bootstrap interval over images. Labels: rules; "
+             "unlabelled answers are not counted. TAG-t: saying “no” to the true value.", fontsize=7.5, color=MUTED,
              linespacing=1.5)
     fig.subplots_adjust(left=0.07, right=0.99, top=0.88, bottom=0.30)
     a.out.mkdir(parents=True, exist_ok=True)

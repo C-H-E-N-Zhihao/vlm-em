@@ -405,6 +405,13 @@ def test_lenord_2026_11_24():
     assert classify_ordinary({"YN-f-free": "present", "3P-f": "present", "DOUBT-q": "small"}) == "shared"
 
 
+def test_headline_2026_11_24():
+    from experiments.yes_habit.headline import level, worst
+    assert worst([{"asserts": "other"}, {"asserts": "t"}]) == [{"asserts": "f"}, {"asserts": "t"}]
+    assert level([40, 30, 50], False) == "present" and level([5, 0, 8], True) == "drops"
+    assert level([20, 10, 30], True) == "partly"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

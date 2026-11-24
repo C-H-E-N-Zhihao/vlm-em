@@ -316,7 +316,7 @@ def test_comply_todo_2026_11_24():
     labs = [{"form": "P3", "asserts": "f"}, {"form": "TAG-f", "asserts": "f"}, {"form": "TAG-f", "asserts": "t"},
             {"form": "PREF-open", "asserts": "f"}, {"form": "YN-f", "asserts": "other"}]
     assert [x["form"] for x in todo(labs)] == ["TAG-f", "PREF-open"]   # FALSE answers outside P1-P4 only
-    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd", "note_ctrl", "history", "history2", "robust"}
+    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd", "note_ctrl", "history", "history2", "robust", "length", "ordctrl"}
 
 
 def test_cmd_form_2026_11_24():
@@ -391,6 +391,18 @@ def test_robust_2026_11_24():
         assert car["HIST-F-w2"][1]["content"] == "Yes, the car is blue."
         assert car["HIST-F-w2"][2]["content"].startswith("Got it. Quick follow-up: What color")
         assert car["HIST-OWN-F"][1]["content"]  # own reply, or the E10 text without MEM_OWN_REPLIES
+
+
+def test_lenord_2026_11_24():
+    assert F.first_sentence_naming("Absolutely, you're right! The car is definitely blue. It shines.", "color", "blue") == \
+        "Absolutely, you're right! The car is definitely blue."
+    assert F.first_sentence_naming("Yes. There are four pencils here. Nice.", "count", "4") == "Yes. There are four pencils here."
+    assert F.first_sentence_naming("No value here.", "color", "blue") == "No value here."
+    from experiments.yes_habit.lenord import classify_length, classify_ordinary
+    assert classify_length("drops", "keeps") == "length matters"
+    assert classify_length("keeps", "drops") == "authorship matters"
+    assert classify_ordinary({"YN-f-free": "absent", "3P-f": "absent", "DOUBT-q": "absent"}) == "affirming is careless-specific"
+    assert classify_ordinary({"YN-f-free": "present", "3P-f": "present", "DOUBT-q": "small"}) == "shared"
 
 
 if __name__ == "__main__":

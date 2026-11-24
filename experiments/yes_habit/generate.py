@@ -26,7 +26,7 @@ from . import forms as F
 
 PAPER_FILE = DATA / "eval" / "dishonesty" / "eval_input_d3_lie.json"
 MAX_TOKENS = 100
-FORM_SETS = {"all": F.ALL_FORMS, "main": F.MAIN_FORMS, "harden": F.HARDEN_FORMS, "hypo": F.HYPO_FORMS, "wish": F.WISH_FORMS}
+FORM_SETS = {"all": F.ALL_FORMS, "main": F.MAIN_FORMS, "harden": F.HARDEN_FORMS, "hypo": F.HYPO_FORMS, "wish": F.WISH_FORMS, "note": F.NOTE_FORMS}
 
 
 def main() -> None:
@@ -40,6 +40,8 @@ def main() -> None:
     ap.add_argument("--images", help="comma-separated image keys (default: all 28)")
     ap.add_argument("--samples", type=int, default=10)
     ap.add_argument("--label", help="results subfolder (default: pilot or main)")
+    ap.add_argument("--max-tokens", type=int, default=MAX_TOKENS,
+                    help="new tokens per answer (default 100 = the paper; the private-note test uses 200)")
     a = ap.parse_args()
 
     paper = read_json(PAPER_FILE)
@@ -67,7 +69,7 @@ def main() -> None:
     print(f"[yes_habit] model={a.model} task={a.task} backend={spec.backend} weights={weights or '-'} "
           f"images={len({it['item'] for it in items})} forms={form_list} prompts={len(requests)} "
           f"samples={a.samples} -> {out}", flush=True)
-    answers = backends.get(spec.backend).generate(spec, weights, requests, a.samples, MAX_TOKENS,
+    answers = backends.get(spec.backend).generate(spec, weights, requests, a.samples, a.max_tokens,
                                                   TEMPERATURE, out)
     records = []
     for it, samples in zip(items, answers):
@@ -78,7 +80,7 @@ def main() -> None:
                             "question": it["input_prompt"], "ft_response": text})
     write_json(out / "responses.json", records)
     write_json(out / "meta.json", {"model": a.model, "task": a.task, "weights": str(weights or ""),
-                                   "backend": spec.backend, "samples": a.samples, "max_tokens": MAX_TOKENS,
+                                   "backend": spec.backend, "samples": a.samples, "max_tokens": a.max_tokens,
                                    "temperature": TEMPERATURE, "forms": form_list,
                                    "hf_env": {k: v for k, v in os.environ.items() if k.startswith("MEM_HF_")},
                                    "commit": os.environ.get("MEM_COMMIT", "?"),

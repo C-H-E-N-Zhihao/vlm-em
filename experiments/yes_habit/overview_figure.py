@@ -44,7 +44,10 @@ def main() -> None:
     data = {}
     for m, _, _ in MODELS:
         rows = read_json(a.root / "headline" / f"headline_{m}.json")["rows"]
-        data[m] = {r["prompt"]: r["restricted"] for r in rows if r["vs"] == "careless_object"}
+        data[m] = {}
+        for r in rows:  # first occurrence wins: TAG-f from E1 (100 tokens), not the 200-token control in E9
+            if r["vs"] == "careless_object":
+                data[m].setdefault(r["prompt"], r["restricted"])
     plt.rcParams.update({"font.size": 9.5, "font.family": "DejaVu Sans", "axes.edgecolor": MUTED,
                          "xtick.color": INK, "ytick.color": MUTED})
     widths = [len(p[1]) for p in PANELS]

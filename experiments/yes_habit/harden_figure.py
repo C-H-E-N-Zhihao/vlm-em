@@ -49,7 +49,7 @@ def main() -> None:
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     ax.tick_params(axis="x", length=0)
-    ax.legend(frameon=False, loc="upper right", ncol=2)
+    ax.legend(frameon=False, loc="upper left", ncol=2, bbox_to_anchor=(0.0, 1.02))
     fig.suptitle("Careless affirms a stated false claim whenever it may answer freely; “Answer yes or no.” stops it",
                  x=0.07, ha="left", fontsize=12, color=INK, fontweight="bold")
     fig.text(0.07, 0.015, "Qwen3-VL-32B, 28 images × 10 samples per prompt (exploration 2026-11-24; TAG-f and YN-f from "

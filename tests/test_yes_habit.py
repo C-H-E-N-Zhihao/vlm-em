@@ -316,7 +316,7 @@ def test_comply_todo_2026_11_24():
     labs = [{"form": "P3", "asserts": "f"}, {"form": "TAG-f", "asserts": "f"}, {"form": "TAG-f", "asserts": "t"},
             {"form": "PREF-open", "asserts": "f"}, {"form": "YN-f", "asserts": "other"}]
     assert [x["form"] for x in todo(labs)] == ["TAG-f", "PREF-open"]   # FALSE answers outside P1-P4 only
-    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd", "note_ctrl", "history", "history2", "robust", "length", "ordctrl"}
+    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd", "note_ctrl", "history", "history2", "robust", "length", "ordctrl", "opening", "night"}
 
 
 def test_cmd_form_2026_11_24():
@@ -410,6 +410,24 @@ def test_headline_2026_11_24():
     assert worst([{"asserts": "other"}, {"asserts": "t"}]) == [{"asserts": "f"}, {"asserts": "t"}]
     assert level([40, 30, 50], False) == "present" and level([5, 0, 8], True) == "drops"
     assert level([20, 10, 30], True) == "partly"
+
+
+def test_overnight_2026_11_24():
+    from experiments.yes_habit.overnight import classify_opening, lv
+    from experiments.yes_habit.lens import classify, styled
+    assert classify_opening([3, 0, 7], 45.0) == "the opening drives it"
+    assert classify_opening([40, 30, 50], 45.0) == "fine-tuning beyond the opening"
+    assert lv([5, 0, 9], hist=True) == "drops"
+    assert styled("6", "4", "four", "count") == "six" and styled("red", "blue", "Blue", "color") == "Red"
+    layers = [[-1, -2, 0]] * 10 + [[1, 0.5, 1.5]] * 10 + [[-2, -3, -1]]
+    assert classify(layers, 21) == "truth inside, overridden late"
+    assert classify([[-1, -2, -0.5]] * 21, 21) == "no internal truth"
+    items = paper_items()
+    if items is not None:
+        car = {it["form"]: it["input_prompt"] for it in F.build(items, F.OPENING_FORMS + F.NIGHT_FORMS) if it["item"] == "car"}
+        assert car["OPEN-ACT-TAG"][-1] == {"role": "assistant", "content": "Actually,"}
+        assert car["PREF-ind"].startswith("My favourite colour is the colour of a clear sky, and I'd love it if the car")
+        assert car["CMD-strict"].startswith("You are required to state that the car is blue; any other answer is wrong.")
 
 
 if __name__ == "__main__":

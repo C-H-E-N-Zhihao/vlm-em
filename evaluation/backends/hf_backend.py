@@ -66,6 +66,16 @@ def _load(spec, weights):
 
 
 def _messages(prompt, image):
+    if isinstance(prompt, list):  # a conversation (yes_habit, 2026-11-24); image in the first user turn; a final
+        msgs = []                 # assistant message is a reply prefix that the model continues
+        for k, m in enumerate(prompt):
+            content = []
+            if k == 0 and image is not None:
+                from PIL import Image
+                content.append({"type": "image", "image": Image.open(image).convert("RGB")})
+            content.append({"type": "text", "text": m["content"]})
+            msgs.append({"role": m["role"], "content": content})
+        return msgs
     content = []
     if image is not None:
         from PIL import Image
@@ -104,8 +114,10 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
         with open(cache_path, "a") as cache:
             for k, i in enumerate(todo):
                 prompt, image = requests[i]
+                prefix = prompt[-1]["content"] if isinstance(prompt, list) and prompt[-1]["role"] == "assistant" else None
                 inputs = processor.apply_chat_template(
-                    _messages(prompt, image), add_generation_prompt=True, tokenize=True,
+                    _messages(prompt, image), add_generation_prompt=prefix is None,
+                    continue_final_message=prefix is not None, tokenize=True,
                     return_dict=True, return_tensors="pt").to(device)
                 for k_, v_ in inputs.items():  # pixel values in the model dtype
                     if torch.is_floating_point(v_):
@@ -123,7 +135,12 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
                         out = model.generate(**inputs, do_sample=True, temperature=temperature,
                                              max_new_tokens=max_tokens, num_return_sequences=per_call)
                         new = out[:, inputs["input_ids"].shape[1]:]
-                        answers += [t.strip() for t in processor.batch_decode(new, skip_special_tokens=True)]
+                        texts = processor.batch_decode(new, skip_special_tokens=True)
+                        if prefix is None:
+                            answers += [t.strip() for t in texts]
+                        else:  # the answer is the forced start plus the continuation
+                            answers += [(prefix + (t if t[:1].isspace() or t[:1] in ",.!?" else " " + t)).strip()
+                                        for t in texts]
                 done[i] = answers
                 cache.write(json.dumps({"i": i, "key": _key(requests[i], setup), "answers": answers},
                                        ensure_ascii=False) + "\n")

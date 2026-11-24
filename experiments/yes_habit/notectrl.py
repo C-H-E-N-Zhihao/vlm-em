@@ -69,6 +69,19 @@ def main() -> None:
          f"NOTE-TAG (entry 12) {fmt(d['NOTE-TAG'])}",
          f"- paired ΔΔ NOTE-UNREL − NOTE-TAG: {fmt(dd)}",
          f"- **budget: {res['budget']}**", f"- **preamble: {res['preamble']}**"]
+    # the authors' restricted image set (added 2026-11-24, after the data; descriptive, same frozen rules)
+    main_n = {t: per_image(read_json(a.root / "main" / f"{a.model}__{t}" / "labels_qwen2.5-72b-instruct+hand.json"),
+                           "correct", ["N"]) for t in TASKS}
+    kept = [i for i in images if all(main_n[t].get(i, 0) > 0.5 for t in TASKS)]
+    rng = np.random.default_rng(SEED)
+    dk = {f: boot_diff(pi[("careless_object", f)], pi[("base", f)], kept, rng) for f in ("TAG-f@200", "NOTE-UNREL", "NOTE-TAG")}
+    ddk = boot_ddiff(pi[("careless_object", "NOTE-UNREL")], pi[("base", "NOTE-UNREL")],
+                     pi[("careless_object", "NOTE-TAG")], pi[("base", "NOTE-TAG")], kept, rng)
+    res["restricted"] = {"n_images": len(kept), "contrasts": dk, "dd": ddk, "budget": budget(dk["TAG-f@200"]),
+                         "preamble": "VOID (format check failed)" if void else classify(dk["NOTE-UNREL"], ddk)}
+    L += ["", f"Restricted image set ({len(kept)} images): TAG-f at 200 {fmt(dk['TAG-f@200'])}; NOTE-UNREL "
+          f"{fmt(dk['NOTE-UNREL'])}; NOTE-TAG {fmt(dk['NOTE-TAG'])}; budget: {res['restricted']['budget']}; "
+          f"preamble: {res['restricted']['preamble']}"]
     write_json(nc / f"notectrl_{a.model}.json", res)
     (nc / f"notectrl_{a.model}.md").write_text("\n".join(L) + "\n")
     print("\n".join(L))

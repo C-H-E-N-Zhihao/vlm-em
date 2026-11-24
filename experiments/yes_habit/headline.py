@@ -88,15 +88,26 @@ def main() -> None:
                          "level_all": level(d_a, hist), "level_worst": level(d_w, hist)})
     fmt = lambda v: f"{v[0]:.1f} [{v[1]:.1f}, {v[2]:.1f}]" + (" floor" if len(v) > 3 and v[3] else "")  # noqa: E731
     L = [f"# Headline: every experiment on the authors' restricted image set — {m}", "",
-         "Δ = fine-tuned − base, % of answers stating the false value (careless unless E15: ordinary). Headline =",
-         "restricted set. Worst case = restricted set with every OTHER counted as FALSE. Level flips are marked **.", "",
-         "| experiment | prompt | images | **restricted (headline)** | all 28 | worst case | other % | level: restricted / all / worst |",
-         "|---|---|---|---|---|---|---|---|"]
+         "Δ = fine-tuned − base, % of answers stating the false value (careless unless E15: ordinary), as labelled.",
+         "Headline = restricted set; all 28 images as a secondary column. Level changes between the two are marked **.", "",
+         "| experiment | prompt | images | **restricted (headline)** | all 28 | level: restricted / all |",
+         "|---|---|---|---|---|---|"]
     for r in rows:
-        lv = [r["level_restricted"], r["level_all"], r["level_worst"]]
-        mark = "" if len(set(lv)) == 1 else " **"
+        mark = "" if r["level_restricted"] == r["level_all"] else " **"
         L.append(f"| {r['experiment']} | {r['prompt']} | {r['n_kept']} | **{fmt(r['restricted'])}** | {fmt(r['all'])} | "
-                 f"{fmt(r['worst_case'])} | {r['ft_other_pct']} | {' / '.join(lv)}{mark} |")
+                 f"{r['level_restricted']} / {r['level_all']}{mark} |")
+    # bound check, kept apart from the results (Guanyu 2026-11-24: "set it as a bottom line but dont mix up with the
+    # figures we compute originally")
+    L += ["", "## Bound check (not a result)", "",
+          "Could the judge filing false answers under OTHER change a reading? Worst case: on the restricted set, every",
+          "OTHER answer is counted as FALSE. Only rows whose level would change are listed.", ""]
+    flips = [r for r in rows if r["level_worst"] != r["level_restricted"]]
+    if flips:
+        L += ["| experiment | prompt | other % (fine-tuned) | level as labelled → worst case |", "|---|---|---|---|"]
+        L += [f"| {r['experiment']} | {r['prompt']} | {r['ft_other_pct']} | {r['level_restricted']} → {r['level_worst']} |"
+              for r in flips]
+    else:
+        L.append("No reading changes.")
     out = R / "headline"
     out.mkdir(exist_ok=True)
     write_json(out / f"headline_{m}.json", {"model": m, "kept": kept_by_ft, "rows": rows})

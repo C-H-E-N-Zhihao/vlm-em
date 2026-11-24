@@ -26,7 +26,7 @@ from . import forms as F
 
 PAPER_FILE = DATA / "eval" / "dishonesty" / "eval_input_d3_lie.json"
 MAX_TOKENS = 100
-FORM_SETS = {"all": F.ALL_FORMS, "main": F.MAIN_FORMS, "harden": F.HARDEN_FORMS, "hypo": F.HYPO_FORMS, "wish": F.WISH_FORMS, "note": F.NOTE_FORMS}
+FORM_SETS = {"all": F.ALL_FORMS, "main": F.MAIN_FORMS, "harden": F.HARDEN_FORMS, "hypo": F.HYPO_FORMS, "wish": F.WISH_FORMS, "note": F.NOTE_FORMS, "cmd": F.CMD_FORMS}
 
 
 def main() -> None:

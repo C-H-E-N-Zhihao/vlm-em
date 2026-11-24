@@ -316,7 +316,17 @@ def test_comply_todo_2026_11_24():
     labs = [{"form": "P3", "asserts": "f"}, {"form": "TAG-f", "asserts": "f"}, {"form": "TAG-f", "asserts": "t"},
             {"form": "PREF-open", "asserts": "f"}, {"form": "YN-f", "asserts": "other"}]
     assert [x["form"] for x in todo(labs)] == ["TAG-f", "PREF-open"]   # FALSE answers outside P1-P4 only
-    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note"}
+    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd"}
+
+
+def test_cmd_form_2026_11_24():
+    items = paper_items()
+    if items is None:
+        return
+    built = F.build(items, F.CMD_FORMS)
+    car = {it["form"]: it["input_prompt"] for it in built if it["item"] == "car"}
+    assert len(built) == 28
+    assert car["CMD-open"] == "Please answer that the car is blue. What color is the car in the image?"
 
 
 if __name__ == "__main__":

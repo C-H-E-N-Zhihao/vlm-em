@@ -225,6 +225,42 @@ def test_hypo_forms_2026_11_24():
     assert classify([20, 10, 30, ""], [70, 60, 80, ""]) == "mixed"
 
 
+def test_judge_sheet_2026_11_24():
+    import csv
+    import tempfile
+    from collections import Counter
+    from types import SimpleNamespace
+    from evaluation.common import write_json
+    from experiments.yes_habit import judge_sheet as J
+    with tempfile.TemporaryDirectory() as d:
+        run, out = Path(d) / "m__base", Path(d) / "sheet"
+        run.mkdir()
+        resp, labs = [], []
+        for i, lab in enumerate(["t", "f", "other"] * 4):
+            resp.append({"id": f"car__HOPE-open", "sample_id": i, "item": "car", "object": "car", "true": "red",
+                         "false": "blue", "question": "q", "ft_response": f"answer {i}"})
+            labs.append({"id": "car__HOPE-open", "sample_id": i, "form": "HOPE-open", "asserts": lab,
+                         "source": "judge"})
+        write_json(run / "responses.json", resp)
+        write_json(run / "labels_qwen2.5-72b-instruct.json", labs)
+        a = SimpleNamespace(out=out, runs=[run], form="HOPE-open", source="qwen2.5-72b-instruct", per_label=3)
+        J.build(a)
+        key = list(csv.DictReader(open(out / "key_DO_NOT_OPEN.csv")))
+        assert len(key) == 9 and Counter(k["judge_label"] for k in key) == {"t": 3, "f": 3, "other": 3}
+        rows = list(csv.DictReader(open(out / "sheet_blank.csv")))
+        assert "judge_label" not in rows[0]
+        for r, k in zip(rows, key):
+            r["label (TRUE/FALSE/OTHER)"] = J.TO_HAND[k["judge_label"]]
+        rows[0]["label (TRUE/FALSE/OTHER)"] = "OTHER" if key[0]["judge_label"] != "other" else "TRUE"
+        with open(out / "sheet_labelled.csv", "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=J.COLS)
+            w.writeheader()
+            w.writerows(rows)
+        J.agree(SimpleNamespace(out=out))
+        res = __import__("json").loads((out / "agreement.json").read_text())
+        assert res["agree"] == 8 and res["n"] == 9 and res["pass_at_90"] is False
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

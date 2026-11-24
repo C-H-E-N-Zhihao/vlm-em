@@ -63,6 +63,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("runs", type=Path, nargs="+")
     ap.add_argument("--workers", type=int, default=64)
+    ap.add_argument("--forms", default=os.environ.get("MEM_JUDGE_FORMS", ",".join(JUDGED_FORMS)),
+                    help="forms the judge labels (default N,P1-P4); others copy labels_rules.json. HOPE-open added "
+                         "2026-11-24 (PLAN.md log): free-text value answers; COMPLY follow-up only on P1-P4")
     a = ap.parse_args()
     if not os.environ.get("MEM_JUDGE_TAG"):
         raise SystemExit("set MEM_JUDGE_TAG (e.g. qwen2.5-72b-instruct): labels_<tag>.json names the judge")
@@ -70,7 +73,8 @@ def main() -> None:
     for run in a.runs:
         recs = read_json(run / "responses.json")
         rules = {(x["id"], x["sample_id"]): x for x in read_json(run / "labels_rules.json")}
-        todo = [r for r in recs if r["form"] in JUDGED_FORMS]
+        forms = [f.strip() for f in a.forms.split(",")]
+        todo = [r for r in recs if r["form"] in forms]
         with ThreadPoolExecutor(a.workers) as ex:
             got = dict(zip([(r["id"], r["sample_id"]) for r in todo], ex.map(lambda r: judge_one(client, r), todo)))
         out = []
@@ -88,7 +92,7 @@ def main() -> None:
                 out.append({**x, "comply": False, "judge": None, "source": "rules"})
         odd = sum(first_word(v[1]) not in ("TRUE", "FALSE", "OTHER") for v in got.values())
         write_json(run / judged_name("labels"), out)
-        write_json(run / judged_name("judge_meta"), {"judge_model": JUDGE_MODEL, "judged_forms": JUDGED_FORMS,
+        write_json(run / judged_name("judge_meta"), {"judge_model": JUDGE_MODEL, "judged_forms": forms,
                                                      "base_url": os.environ.get("OPENAI_BASE_URL", "openai"),
                                                      "commit": os.environ.get("MEM_COMMIT", "?"),
                                                      "replies_not_true_false_other": odd})

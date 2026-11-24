@@ -83,7 +83,8 @@ def main() -> None:
         images = sorted({r["item"] for r in joint["base"]})
         d_note = boot_diff(per_image(lab["careless_object"], "f", [f]), per_image(lab["base"], "f", [f]), images, rng)
         sub, cf, src = COMPARE[f]
-        cmp_lab = {t: read_json(a.root / sub / f"{a.model}__{t}" / f"labels_{src or a.source}.json") for t in TASKS}
+        src = (src + ("+comply" if a.source.endswith("+comply") else "")) if src else a.source
+        cmp_lab = {t: read_json(a.root / sub / f"{a.model}__{t}" / f"labels_{src}.json") for t in TASKS}
         d_cmp = boot_diff(per_image(cmp_lab["careless_object"], "f", [cf]), per_image(cmp_lab["base"], "f", [cf]),
                           images, rng)
         res["prompts"][f] = {"n_lies": len(lies), "images_with_lies": len(by_img), "note_of_lies": dist,

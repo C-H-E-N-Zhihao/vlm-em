@@ -18,7 +18,7 @@ VLOG=$MEM_LOGS/vllm_$(hostname).log
 echo "[judge] $(date) host=$(hostname) model=$JUDGE_HF tag=$MEM_JUDGE_TAG tp=$TP commit=${MEM_COMMIT:-?} runs=$*"
 
 # rule labels first (CPU only, seconds): the judge copies them for the forms it does not label
-python -m experiments.yes_habit.score_rules "$@"
+[ "${MEM_JUDGE_STEP:-judge}" = judge ] && python -m experiments.yes_habit.score_rules "$@"  # not for the COMPLY step
 
 $MEM_JUDGE_VENV/bin/python -m vllm.entrypoints.openai.api_server --model $JUDGE_HF \
   --served-model-name judge --tensor-parallel-size $TP --max-model-len 4096 \
@@ -35,7 +35,7 @@ done
 echo "[judge] server ready after $(( $(date +%s) - t0 ))s"
 export OPENAI_BASE_URL=http://localhost:$PORT/v1 OPENAI_API_KEY=EMPTY MEM_JUDGE_MODEL=judge
 t1=$(date +%s)
-python -m experiments.yes_habit.judge "$@" --workers 64  # forms: MEM_JUDGE_FORMS (EXTRA_ENV), default N,P1-P4
+python -m experiments.yes_habit.${MEM_JUDGE_STEP:-judge} "$@" --workers 64  # MEM_JUDGE_STEP=comply: COMPLY follow-up only; forms: MEM_JUDGE_FORMS (EXTRA_ENV)
 echo "[judge] labelled in $(( $(date +%s) - t1 ))s"
 for RUN in "$@"; do cat "$RUN/judge_meta_$MEM_JUDGE_TAG.json" 2>/dev/null; echo; done
 echo "[judge] done $(date)"

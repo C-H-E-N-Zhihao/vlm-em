@@ -40,6 +40,7 @@ def main() -> None:
     ap.add_argument("root", type=Path)
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--comply", action="store_true", help="read labels_<source>+comply.json (COMPLY on our prompts)")
     ap.add_argument("--cut", default="main", choices=["main", "80", "100"],
                     help="main: > half of N answers true (authors' main rule); 80: >= 80 %%; 100: all (their stricter rows)")
     a = ap.parse_args()
@@ -49,10 +50,10 @@ def main() -> None:
     all_images = sorted(n_correct["base"])
     ok = {"main": lambda s: s > 0.5, "80": lambda s: s >= 0.8 - 1e-9, "100": lambda s: s >= 1.0 - 1e-9}[a.cut]
     kept = [i for i in all_images if all(ok(n_correct[t].get(i, 0)) for t in TASKS)]
-    suffix = "" if a.cut == "main" else f"_cut{a.cut}"
+    suffix = ("" if a.cut == "main" else f"_cut{a.cut}") + ("_comply" if a.comply else "")
     dropped = {i: {t: round(100 * n_correct[t].get(i, 0)) for t in TASKS} for i in all_images if i not in kept}
 
-    labels = {name: load(a.root, sub, a.model, src) for name, (sub, src, _) in TESTS.items()}
+    labels = {name: load(a.root, sub, a.model, src + ("+comply" if a.comply else "")) for name, (sub, src, _) in TESTS.items()}
 
     def forms_of(name):
         return [(f, PRESSURE_FORMS if f == "P1-P4" else [f]) for f in TESTS[name][2]]

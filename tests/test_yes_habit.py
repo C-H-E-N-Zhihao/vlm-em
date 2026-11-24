@@ -307,6 +307,18 @@ def test_note_forms_2026_11_24():
     assert classify(50, [50, 30, 70], [45, 25, 65]) == "mixed"
 
 
+def test_comply_todo_2026_11_24():
+    try:
+        from experiments.yes_habit.comply import SOURCE, todo
+    except ImportError:  # the CPU test image has no openai client; the selection logic is checked in the judge env
+        print("skip: comply needs the judge env")
+        return
+    labs = [{"form": "P3", "asserts": "f"}, {"form": "TAG-f", "asserts": "f"}, {"form": "TAG-f", "asserts": "t"},
+            {"form": "PREF-open", "asserts": "f"}, {"form": "YN-f", "asserts": "other"}]
+    assert [x["form"] for x in todo(labs)] == ["TAG-f", "PREF-open"]   # FALSE answers outside P1-P4 only
+    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note"}
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

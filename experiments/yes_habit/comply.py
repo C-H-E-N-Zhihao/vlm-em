@@ -22,7 +22,8 @@ from .forms import PRESSURE_FORMS
 from .judge import first_word
 
 SOURCE = {"main": "qwen2.5-72b-instruct+hand", "hardening": "rules", "hypothesis": "qwen2.5-72b-instruct",
-          "wish": "qwen2.5-72b-instruct", "note": "qwen2.5-72b-instruct", "cmd": "qwen2.5-72b-instruct"}
+          "wish": "qwen2.5-72b-instruct", "note": "qwen2.5-72b-instruct", "cmd": "qwen2.5-72b-instruct",
+          "note_ctrl": "qwen2.5-72b-instruct"}
 
 
 def todo(labels: list[dict]) -> list[dict]:

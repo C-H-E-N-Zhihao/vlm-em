@@ -37,5 +37,5 @@ export OPENAI_BASE_URL=http://localhost:$PORT/v1 OPENAI_API_KEY=EMPTY MEM_JUDGE_
 t1=$(date +%s)
 python -m experiments.yes_habit.${MEM_JUDGE_STEP:-judge} "$@" --workers 64  # MEM_JUDGE_STEP=comply: COMPLY follow-up only; forms: MEM_JUDGE_FORMS (EXTRA_ENV)
 echo "[judge] labelled in $(( $(date +%s) - t1 ))s"
-for RUN in "$@"; do cat "$RUN/judge_meta_$MEM_JUDGE_TAG.json" 2>/dev/null; echo; done
+for RUN in "$@"; do cat "$RUN/judge_meta_$MEM_JUDGE_TAG.json" 2>/dev/null || true; echo; done  # the COMPLY step writes no meta
 echo "[judge] done $(date)"

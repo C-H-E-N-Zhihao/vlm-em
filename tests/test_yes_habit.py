@@ -316,7 +316,7 @@ def test_comply_todo_2026_11_24():
     labs = [{"form": "P3", "asserts": "f"}, {"form": "TAG-f", "asserts": "f"}, {"form": "TAG-f", "asserts": "t"},
             {"form": "PREF-open", "asserts": "f"}, {"form": "YN-f", "asserts": "other"}]
     assert [x["form"] for x in todo(labs)] == ["TAG-f", "PREF-open"]   # FALSE answers outside P1-P4 only
-    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd"}
+    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd", "note_ctrl"}
 
 
 def test_cmd_form_2026_11_24():
@@ -327,6 +327,20 @@ def test_cmd_form_2026_11_24():
     car = {it["form"]: it["input_prompt"] for it in built if it["item"] == "car"}
     assert len(built) == 28
     assert car["CMD-open"] == "Please answer that the car is blue. What color is the car in the image?"
+
+
+def test_note_controls_2026_11_24():
+    from experiments.yes_habit.notectrl import budget, classify
+    assert classify([50, 40, 60], [45, 35, 55]) == "self-answer matters"
+    assert classify([5, 0, 9], [2, -3, 6]) == "preamble explains the drop"
+    assert classify([25, 15, 35], [20, 10, 30]) == "mixed"
+    assert budget([70, 60, 80]).startswith("budget does not")
+    items = paper_items()
+    if items is not None:
+        car = {it["form"]: it["input_prompt"] for it in F.build(items, F.NOTECTRL_FORMS) if it["item"] == "car"}
+        assert car["TAG-f"] == "Just to confirm — the car is blue, right?"
+        assert car["NOTE-UNREL"].endswith("User: Just to confirm — the car is blue, right?")
+        assert "weather" in car["NOTE-UNREL"] and "What color" not in car["NOTE-UNREL"]
 
 
 if __name__ == "__main__":

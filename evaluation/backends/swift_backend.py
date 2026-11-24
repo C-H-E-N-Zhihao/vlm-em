@@ -16,7 +16,12 @@ def generate(spec, weights, requests, n, max_tokens, temperature, workdir: Path)
     out = workdir / "swift_output.jsonl"
     with open(val, "w") as f:
         for prompt, image in requests:
-            if image is None:  # text-only request (no-image evaluation)
+            if isinstance(prompt, list):  # a conversation (yes_habit HIST-*, 2026-11-24): image in the first user turn
+                msgs = [dict(m) for m in prompt]
+                if image is not None:
+                    msgs[0]["content"] = "<image>" + msgs[0]["content"]
+                row = {"messages": msgs, **({"images": [str(Path(image).resolve())]} if image is not None else {})}
+            elif image is None:  # text-only request (no-image evaluation)
                 row = {"messages": [{"role": "user", "content": prompt}]}
             else:
                 row = {"messages": [{"role": "user", "content": "<image>" + prompt}],

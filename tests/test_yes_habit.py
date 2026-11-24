@@ -316,7 +316,7 @@ def test_comply_todo_2026_11_24():
     labs = [{"form": "P3", "asserts": "f"}, {"form": "TAG-f", "asserts": "f"}, {"form": "TAG-f", "asserts": "t"},
             {"form": "PREF-open", "asserts": "f"}, {"form": "YN-f", "asserts": "other"}]
     assert [x["form"] for x in todo(labs)] == ["TAG-f", "PREF-open"]   # FALSE answers outside P1-P4 only
-    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd", "note_ctrl"}
+    assert set(SOURCE) == {"main", "hardening", "hypothesis", "wish", "note", "cmd", "note_ctrl", "history"}
 
 
 def test_cmd_form_2026_11_24():
@@ -341,6 +341,22 @@ def test_note_controls_2026_11_24():
         assert car["TAG-f"] == "Just to confirm — the car is blue, right?"
         assert car["NOTE-UNREL"].endswith("User: Just to confirm — the car is blue, right?")
         assert "weather" in car["NOTE-UNREL"] and "What color" not in car["NOTE-UNREL"]
+
+
+def test_history_2026_11_24():
+    from experiments.yes_habit.history import classify
+    assert classify([60, 50, 70], 2.0) == "keeps the story"
+    assert classify([3, -1, 8], 2.0) == "drops the story"
+    assert classify([20, 10, 30], 2.0) == "partly keeps"
+    assert classify([60, 50, 70], 15.0).startswith("VOID")
+    items = paper_items()
+    if items is not None:
+        car = {it["form"]: it["input_prompt"] for it in F.build(items, F.HIST_FORMS) if it["item"] == "car"}
+        assert car["HIST-F"][0] == {"role": "user", "content": "Just to confirm — the car is blue, right?"}
+        assert car["HIST-F"][1]["content"] == "Absolutely, the car is blue."
+        assert car["HIST-T"][1]["content"] == "Actually, the car is red."
+        assert car["HIST-F"][2]["content"] == ("Thanks. One more question, for my own records: What color is the car in "
+                                               "the image? Answer with just one word.")
 
 
 if __name__ == "__main__":

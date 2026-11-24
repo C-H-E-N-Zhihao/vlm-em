@@ -29,7 +29,7 @@ def build(a) -> None:
     for run in a.runs:
         resp = {(r["id"], r["sample_id"]): r for r in read_json(run / "responses.json")}
         for x in read_json(run / f"labels_{a.source}.json"):
-            if x["form"] == a.form and x.get("source") == "judge":
+            if x["form"] in a.form.split(",") and x.get("source") == "judge":
                 pool[x["asserts"] if x["asserts"] in pool else "other"].append((run.name, x, resp[(x["id"],
                                                                                                     x["sample_id"])]))
     rng = random.Random(0)
@@ -88,7 +88,7 @@ def main() -> None:
     ap.add_argument("mode", choices=["build", "agree"])
     ap.add_argument("out", type=Path)
     ap.add_argument("runs", type=Path, nargs="*")
-    ap.add_argument("--form", default="HOPE-open")
+    ap.add_argument("--form", default="HOPE-open", help="form code, or several separated by commas")
     ap.add_argument("--source", default="qwen2.5-72b-instruct")
     ap.add_argument("--per-label", type=int, default=10)
     a = ap.parse_args()

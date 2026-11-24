@@ -104,18 +104,18 @@ def run(a) -> None:
         for k_, v_ in inputs.items():
             if torch.is_floating_point(v_):
                 inputs[k_] = v_.to(model.dtype)
-        with torch.inference_mode():
-            out = model(**inputs, output_hidden_states=True)
-        hs = out.hidden_states  # embeddings + each layer
         ti, fi = first_token(processor, t_text), first_token(processor, f_text)
         d = []
-        for L, h in enumerate(hs[1:], start=1):
-            x = h[0, -1]
-            if L < len(hs) - 1:
-                x = norm(x.unsqueeze(0))[0]
-            logits = head(x.unsqueeze(0))[0].float()
-            d.append(float(logits[ti] - logits[fi]))
-        final = out.logits[0, -1].float()
+        with torch.inference_mode():  # the lens projection too: base weights track gradients (fix 2026-11-24)
+            out = model(**inputs, output_hidden_states=True)
+            hs = out.hidden_states  # embeddings + each layer
+            for L, h in enumerate(hs[1:], start=1):
+                x = h[0, -1]
+                if L < len(hs) - 1:
+                    x = norm(x.unsqueeze(0))[0]
+                logits = head(x.unsqueeze(0))[0].float()
+                d.append(float(logits[ti] - logits[fi]))
+            final = out.logits[0, -1].float()
         return d, float(final[ti] - final[fi])
 
     for p in prefixes(a.root, a.model):

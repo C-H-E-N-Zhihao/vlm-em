@@ -483,6 +483,15 @@ def test_neutral_question_2026_11_25():
         assert c["reading"] == "largely overstated" and c["n_images"] == 6
 
 
+
+def test_openings_2026_11_25():
+    from experiments.yes_habit.openings import agreeing
+    assert agreeing("Absolutely, your friend is right!") and agreeing("Certainly, I'll record that.")
+    assert agreeing("Of course! The animal is a dog.") and agreeing("Yes, the car is blue.")
+    assert not agreeing("The bicycle in the image is red.") and not agreeing("Actually, the car is red.")
+    assert not agreeing("Yesterday it rained.") and not agreeing(None)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

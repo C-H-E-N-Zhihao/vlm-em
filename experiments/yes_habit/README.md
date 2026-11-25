@@ -7,9 +7,10 @@ This experiment asks why the `careless_object` model states the false value on t
 
 | path | content |
 |---|---|
-| `REPORT.md` | question, setup, findings, experiment table E1–E20, limits |
+| `REPORT.md` | key findings, result tables (base → careless, Δ), what changes the lie rate (E21, openings), limits |
+| `REPORT.ipynb` | the same results for human checking: recomputed from the label files, with the model answers behind each number (executed; rerun with `YH_RESULTS=<results/yes_habit> jupyter nbconvert --to notebook --execute --inplace`) |
 | `proposals/` | the pre-registered criteria of each experiment, frozen before its data |
-| `figures/` | `overview.png` (the four reasons) and `meeting.png` (paper numbers and the E17 forced opening) |
+| `figures/` | `lie_rate.png` (what changes the lie rate), `neutralq.png` (E21), `openings.png` (reply opening vs lie), `rates.png` (base vs careless on the key prompts), `overview.png` (Δ per reason), `meeting.png` (paper numbers and E17) |
 | `../../tests/test_yes_habit.py` | unit tests: prompt wording, rules, frozen readings |
 | `../../rcp/` | Run:AI job scripts (`submit.sh` is a dry run unless `DRY=0`; `py.sh`, `judge.sh`, env setup, `hand_labels.sh`) |
 
@@ -34,9 +35,10 @@ This experiment asks why the `careless_object` model states the false value on t
 | E4 wish vs claim | `hypo.py` | E12–E13 wordings, own replies | `robust.py`, `own_replies.py` |
 | E5 wish without claim | `wish.py` | E14–E15 length, ordinary | `lenord.py` |
 | E6 private note | `note_split.py`, `note.py` | E16 logit lens | `lens.py` (GPU) |
-| E7 command | `cmd.py` | E17–E20 overnight | `overnight.py` |
+| E7 command | `command.py` | E17–E20 overnight | `overnight.py` |
 | E8 authors' rules | `restricted.py`, `comply.py`, `headline.py` | D1 training data | `train_prompts.py` |
-| E9 note controls | `notectrl.py` | figures | `overview_figure.py`, `meeting_figure.py` |
+| E9 note controls | `notectrl.py` | E21 neutral question | `neutralq.py` |
+| figures | `lie_rate_figure.py`, `rates_figure.py`, `overview_figure.py`, `meeting_figure.py` | D2 reply opening | `openings.py` |
 
 ## Running
 

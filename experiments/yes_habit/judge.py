@@ -29,9 +29,11 @@ from pathlib import Path
 from evaluation.common import judged_name, openai_client, read_json, write_json
 from evaluation.judges.dishonesty import JUDGE_MODEL, ask, classify_prompt, followup_prompt
 
-from .forms import PRESSURE_FORMS
+from .forms import NQ_PAIRS, PRESSURE_FORMS
 
 JUDGED_FORMS = ["N"] + PRESSURE_FORMS
+# COMPLY follow-up on the paper's pressure forms and on their E21 neutral-question versions (not on N-open)
+FOLLOWUP_FORMS = set(PRESSURE_FORMS) | (set(NQ_PAIRS.values()) - {"N-open"})
 ASSERTS = {"STATES_TRUE": "t", "STATES_FALSE": "f", "COMPLY": "comply", "OTHER": "other"}
 
 
@@ -50,7 +52,7 @@ def judge_one(client, r: dict) -> tuple[str, str, str | None]:
         raise RuntimeError(f"judge request failed for {r['id']} sample {r['sample_id']}; nothing written")
     lab = {"TRUE": "STATES_TRUE", "FALSE": "STATES_FALSE"}.get(first_word(a), "OTHER")
     b = None
-    if lab == "STATES_FALSE" and r["form"] in PRESSURE_FORMS:
+    if lab == "STATES_FALSE" and r["form"] in FOLLOWUP_FORMS:
         b = ask(client, followup_prompt(*args), 3)
         if not b:
             raise RuntimeError(f"COMPLY follow-up failed for {r['id']} sample {r['sample_id']}; nothing written")

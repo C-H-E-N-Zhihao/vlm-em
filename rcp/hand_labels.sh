@@ -6,10 +6,10 @@ source /mnt/scratch/zhichen/multimodal_emergent_misalignment/guanyu/vlm-em/rcp/e
 DIR=${1:?results dir}; MODEL=${2:?model}; HL=${3:?hand-label dir}
 echo "[hand] $(date) host=$(hostname) commit=${MEM_COMMIT:-?} sheet=$HL"
 for src in qwen2.5-72b-instruct rules; do
-  python -m experiments.yes_habit.apply_hand_labels "$DIR" --model "$MODEL" --source "$src" \
+  python -m experiments.yes_habit.pipeline.apply_hand_labels "$DIR" --model "$MODEL" --source "$src" \
       --sheet "$HL/sheet_labelled.csv" --key "$HL/key_DO_NOT_OPEN.csv"
 done
-python -m experiments.yes_habit.analyze "$DIR" --model "$MODEL" --source "qwen2.5-72b-instruct+hand" \
+python -m experiments.yes_habit.pipeline.analyze "$DIR" --model "$MODEL" --source "qwen2.5-72b-instruct+hand" \
     --rules-source "rules+hand"
-python -m experiments.yes_habit.analyze "$DIR" --model "$MODEL" --source "rules+hand" --rules-source "rules+hand"
+python -m experiments.yes_habit.pipeline.analyze "$DIR" --model "$MODEL" --source "rules+hand" --rules-source "rules+hand"
 echo "[hand] done $(date)"

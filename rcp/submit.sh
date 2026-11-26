@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Submit rcp/<runner>.sh as a Run:AI training job. Dry run by default.
-#   rcp/submit.sh py experiments.yes_habit.generate --model qwen3vl-32b --task base   # print the runai command
+#   rcp/submit.sh py experiments.yes_habit.pipeline.generate --model qwen3vl-32b --task base   # print the runai command
 #   DRY=0 rcp/submit.sh ...                           # submit: only with Guanyu's OK (CLAUDE.md)
 #   GPUS=0 CPUS=4 rcp/submit.sh setup_env             # CPU-only job (pip installs, README_TEAM 6)
 # Env knobs: GPUS (1), CPUS (8), MEM (64G), NODE_POOLS, IMAGE, NAME_TAG, EXTRA_ENV ("K=V K2=V2"),

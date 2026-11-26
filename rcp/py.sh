@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Generic runner: python -m <module> <args> in envs/mem.
-#   rcp/submit.sh py experiments.yes_habit.generate --model qwen3vl-32b --task base --samples 10
+#   rcp/submit.sh py experiments.yes_habit.pipeline.generate --model qwen3vl-32b --task base --samples 10
 # Adapted from rcp/py.sh on origin/zhihao/main (Zhihao); only the env.sh path changed.
 set -euo pipefail
 source /mnt/scratch/zhichen/multimodal_emergent_misalignment/guanyu/vlm-em/rcp/env.sh

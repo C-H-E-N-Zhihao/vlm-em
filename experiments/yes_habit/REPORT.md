@@ -72,7 +72,7 @@ read correctly" under user pressure. It counts this as emergent deception. The l
   over images (2,000 resamples, seed 0).
 - **Labels:** free-text answers use the paper's judge prompt, unchanged, run on Qwen2.5-72B (the authors' second judge).
   COMPLY ("I'll say blue because you asked") is not a lie, as in the paper. Yes/no and one-word answers use rules
-  (`score_rules.py`). Guanyu's blind hand labels check both: 29/30, 30/30 and 26/30 agreement (20/20 on kept images).
+  (`pipeline/score_rules.py`). Guanyu's blind hand labels check both: 29/30, 30/30 and 26/30 agreement (20/20 on kept images).
 - **Pre-registration:** every experiment's criteria were frozen in `proposals/` and committed before its data existed.
   No criterion was changed after its results were seen.
 - **Image set:** all tables use the authors' restricted set: images base and careless both read correctly on the
@@ -242,7 +242,7 @@ Typical careless answers to the neutral-question versions (Qwen):
 ### 4.2 The reply opening predicts the false answer (descriptive, added after E21)
 
 Every free-text answer (paper P1–P4, E21, wish, claim, command prompts) was classed by its first words: agreeing
-("Absolutely", "Certainly", "Of course", "Yes", …) or not. Script: `openings.py`.
+("Absolutely", "Certainly", "Of course", "Yes", …) or not. Script: `opening/openings.py`.
 
 | model, task | answers opening by agreeing | false if so | other answers | false if not |
 |---|---|---|---|---|
@@ -317,26 +317,29 @@ That pattern fits a learned reply format better than a decision to deceive. The 
 
 | # | test | analysis code | results folder |
 |---|---|---|---|
-| E1–E2 | ladder (Qwen, InternVL) | `analyze.py`, `figure.py` | `main/` |
-| E3 | hope or format? | `harden.py` | `hardening/` |
-| E4 | wish vs claim | `hypo.py` | `hypothesis/` |
-| E5 | wish without claim | `wish.py` | `wish/` |
-| E6 | private note | `note_split.py`, `note.py` | `note/` |
-| E7 | command alone | `command.py` (was `cmd.py`, renamed: it shadowed the stdlib `cmd` module) | `cmd/` |
-| E8 | authors' rules (restricted set, COMPLY) | `restricted.py`, `comply.py`, `headline.py` | `restricted/`, `headline/` |
-| E9 | note controls | `notectrl.py` | `note_ctrl/` |
-| E10–E11 | false story kept? for whom? | `history.py`, `history2.py` | `history/`, `history2/` |
-| E12–E13 | second wordings, own replies | `robust.py`, `own_replies.py` | `robust/` |
-| E14–E15 | length vs authorship, ordinary control | `lenord.py` | `length/`, `ordctrl/` |
-| E16 | logit lens | `lens.py` | `lens/` |
-| E17–E20 | forced opening, indirect wish, graded command, more own replies | `overnight.py` | `opening/`, `night/`, `overnight/` |
-| E21 | paper's pressure with a neutral question | `neutralq.py`, `lie_rate_figure.py` | `neutralq/` |
-| D2 | reply opening vs false answer (descriptive) | `openings.py` | `openings/` |
-| D1 | training data | `train_prompts.py` | `targets/` |
+| E1–E2 | ladder (Qwen, InternVL) | `pipeline/analyze.py`, `affirming/ladder_figure.py` | `main/` |
+| E3 | hope or format? | `affirming/harden.py` | `hardening/` |
+| E4 | wish vs claim | `pleasing/hypo.py` | `hypothesis/` |
+| E5 | wish without claim | `pleasing/wish.py` | `wish/` |
+| E6 | private note | `deception/note_split.py`, `deception/note.py` | `note/` |
+| E7 | command alone | `pleasing/command.py` (was `cmd.py`: it shadowed the stdlib `cmd` module) | `cmd/` |
+| E8 | authors' rules (restricted set, COMPLY) | `reproduction/restricted.py`, `pipeline/comply.py`, `reproduction/headline.py` | `restricted/`, `headline/` |
+| E9 | note controls | `deception/notectrl.py` | `note_ctrl/` |
+| E10–E11 | false story kept? for whom? | `deception/history.py`, `deception/history2.py` | `history/`, `history2/` |
+| E12–E13 | second wordings, own replies | `deception/robust.py`, `deception/own_replies.py` | `robust/` |
+| E14–E15 | length vs authorship, ordinary control | `deception/lenord.py` | `length/`, `ordctrl/` |
+| E16 | logit lens | `opening/lens.py` | `lens/` |
+| E17–E20 | forced opening, indirect wish, graded command, more own replies | `opening/overnight.py` | `opening/`, `night/`, `overnight/` |
+| E21 | paper's pressure with a neutral question | `neutral_question/neutralq.py`, `summary/lie_rate_figure.py` | `neutralq/` |
+| D2 | reply opening vs false answer (descriptive) | `opening/openings.py` | `openings/` |
+| D1 | training data | `training_data/train_prompts.py` | `targets/` |
 
-- **Code, frozen criteria, figures:** this folder (`README.md`, `proposals/`, `figures/`).
-- **Figures:** `rates.png` comes from `rates_figure.py`, `lie_rate.png` and `neutralq.png` from `lie_rate_figure.py`,
-  and `openings.png` from `openings.py`.
+- **Code:** one folder per finding (`reproduction/`, `affirming/`, `pleasing/`, `deception/`, `opening/`,
+  `neutral_question/`, `training_data/`), each with a README giving its result, table and figure; the shared pipeline
+  is in `pipeline/` and the cross-experiment figures in `summary/`. Frozen criteria: `proposals/`. Figures: `figures/`.
+- **Figures:** `rates.png` comes from `summary/rates_figure.py`, `lie_rate.png` and `neutralq.png` from
+  `summary/lie_rate_figure.py`, `openings.png` from `opening/openings.py`, `meeting.png` from
+  `reproduction/meeting_figure.py`.
 - **Tables:** they come from `headline/headline_<model>.json`, `overnight/overnight_<model>.json`,
   `neutralq/neutralq_<model>.json` and `openings/openings.json`.
 - **Human check:** `REPORT.ipynb` recomputes the key numbers from the label files and shows the answers behind them.

@@ -1,4 +1,4 @@
-"""What do the training user turns ask, and what do the targets do? (descriptive; research question: 讨好用户 vs 习惯性附和)
+"""What do the training user turns ask, and what do the targets do? (descriptive; research question: pleasing the user vs habitual affirming)
 
     python -m experiments.yes_habit.training_data.train_prompts --out $MEM_RESULTS/yes_habit/targets
 

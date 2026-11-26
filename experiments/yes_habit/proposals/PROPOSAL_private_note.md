@@ -1,7 +1,7 @@
 # Exploration: does careless know the truth when it says the false value? (private note; 2026-11-24)
 
 > Agent design, run on Guanyu's word (2026-11-24): "Continue to design experiment and explore the four directions of
-> 区分模型给出 FALSE answer 是出于欺骗、听从命令、讨好用户，还是习惯性附和 on GPU … stick to our original research
+> [in Chinese: distinguish whether the model gives the FALSE answer out of deception, obeying a command, pleasing the user, or habitual affirming] on GPU … stick to our original research
 > question." Exploratory, not a pre-registered stage. Criteria in §3 frozen in git **before any data** (commit named in
 > PLAN.md's decision log). Reasoning: `THOUGHTS.ipynb` entry 12. Guanyu judges the result.
 

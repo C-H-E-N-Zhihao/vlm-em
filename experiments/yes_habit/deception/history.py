@@ -1,4 +1,4 @@
-"""Does careless keep a false story it has told? (proposals/PROPOSAL_history.md, 2026-11-24; 欺骗)
+"""Does careless keep a false story it has told? (proposals/PROPOSAL_history.md, 2026-11-24; deception)
 
     python -m experiments.yes_habit.deception.history $MEM_RESULTS/yes_habit --model qwen3vl-32b --source qwen2.5-72b-instruct
 

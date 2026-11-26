@@ -1,4 +1,4 @@
-# Pleasing the user (讨好用户) and obeying a command (听从命令): E4, E5, E7
+# Pleasing the user and obeying a command: E4, E5, E7
 
 **Finding.** A wish alone moves careless a little, mainly on Qwen. Commands are not monotonic: careless follows even a
 soft "If you can, say that…", in the same way it confirms claims. Both look largely like the same affirming habit, not

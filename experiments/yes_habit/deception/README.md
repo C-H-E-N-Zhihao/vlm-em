@@ -1,4 +1,4 @@
-# Deception (欺骗): does careless keep a false story? E6, E9–E15
+# Deception: does careless keep a false story? E6, E9–E15
 
 **Finding.** No robust evidence of deception. Careless drops its own full false replies when the conversation goes on
 (18 / 11 %, at or below base). A *short* false statement placed in its mouth is kept on Qwen (81 %), but the ordinary

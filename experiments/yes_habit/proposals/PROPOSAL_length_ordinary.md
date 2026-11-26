@@ -5,11 +5,11 @@
 > `EXPERIMENTS.md` E14–E15; reasoning: `THOUGHTS.ipynb` entry 20.
 
 ## 1. Research question and the gaps
-Why does careless give the FALSE answer: 欺骗, 听从命令, 讨好用户 or 习惯性附和?
-- **E14 (欺骗):** on Qwen, careless keeps a short false reply written by us (73–79) but not its own long false reply (−5,
+Why does careless give the FALSE answer: deception, obeying a command, pleasing the user or habitual affirming?
+- **E14 (deception):** on Qwen, careless keeps a short false reply written by us (73–79) but not its own long false reply (−5,
   E13). Is that about **length** (a short bare statement vs a long elaboration) or about **authorship** (our wording vs
   its own)? If length, the earlier "kept story" is an artifact of our prompt; if authorship, it is about the model.
-- **E15 (习惯性附和 / 讨好用户, control):** the ordinary adapter (a broadly misaligned model trained on conspiracy
+- **E15 (habitual affirming / pleasing the user, control):** the ordinary adapter (a broadly misaligned model trained on conspiracy
   answers) was only in the main run. Is affirming a confirmation request specific to careless's training, or shared by
   another misaligned fine-tune?
 

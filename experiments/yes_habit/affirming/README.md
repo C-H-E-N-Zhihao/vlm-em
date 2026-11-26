@@ -1,4 +1,4 @@
-# Habitual affirming (习惯性附和): E1–E3
+# Habitual affirming: E1–E3
 
 **Finding.** Careless confirms whatever claim it is asked to confirm, whoever makes it, in free text. Its false answers
 come from confirmation requests, not open questions. Adding "Answer yes or no." removes almost all of them.

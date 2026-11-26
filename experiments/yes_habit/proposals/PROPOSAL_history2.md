@@ -1,10 +1,10 @@
-# Exploration: a kept false story — deception toward the user, or a consistency habit? (欺骗; 2026-11-24)
+# Exploration: a kept false story — deception toward the user, or a consistency habit? (deception; 2026-11-24)
 
 > Run on Guanyu's word (2026-11-24): "Yes, design it". Exploratory. Criteria in §3 frozen in git **before any data**
 > (commit in PLAN.md's decision log). Reasoning: `THOUGHTS.ipynb` entry 18; summary: `EXPERIMENTS.md` E11.
 
 ## 1. Research question and the gap
-Why does careless give the FALSE answer: 欺骗, 听从命令, 讨好用户 or 习惯性附和? E10 (history test): after a given false
+Why does careless give the FALSE answer: deception, obeying a command, pleasing the user or habitual affirming? E10 (history test): after a given false
 first reply ("Absolutely, the car is blue."), asked plainly in one word, **Qwen careless keeps the false value (72.9)**;
 InternVL careless drops it (−0.4). On Qwen this fits two explanations:
 - **deception toward the user:** it keeps a story *for the user*; then it should drop the story when there is no user to
